@@ -314,26 +314,63 @@ async function loadUserData() {
 }
 
 function setupNavigation() {
+    console.log('Setting up navigation...');
     const navItems = document.querySelectorAll('.nav-item');
+    console.log('Found nav items:', navItems.length);
+    
     navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const view = item.dataset.view;
+        // Remove any existing click listeners by cloning the element
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        // Add new click listener using getAttribute to get the view name
+        newItem.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const view = this.getAttribute('data-view');
+            console.log('Nav item clicked:', view);
             switchView(view);
         });
     });
+    
+    console.log('Navigation setup complete');
 }
 
 function switchView(viewName) {
+    console.log('switchView called with:', viewName);
+    
+    // Validate view name
+    if (!viewName || typeof viewName !== 'string') {
+        console.error('Invalid view name:', viewName);
+        return;
+    }
+    
+    // Remove active class from all nav items
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
-        if (item.dataset.view === viewName) {
-            item.classList.add('active');
-        }
     });
+    
+    // Add active class to the clicked nav item
+    const activeNavItem = document.querySelector(`.nav-item[data-view="${viewName}"]`);
+    if (activeNavItem) {
+        activeNavItem.classList.add('active');
+    } else {
+        console.error('Nav item not found for view:', viewName);
+    }
+    
+    // Hide all views
     document.querySelectorAll('.view').forEach(view => {
         view.classList.remove('active');
     });
-    document.getElementById('view-' + viewName).classList.add('active');
+    
+    // Show the selected view
+    const targetView = document.getElementById('view-' + viewName);
+    if (targetView) {
+        targetView.classList.add('active');
+        console.log('View switched to:', viewName);
+    } else {
+        console.error('View element not found: view-' + viewName);
+    }
 }
 
 // ==================== PRICE TRACKING ====================
