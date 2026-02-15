@@ -18,13 +18,20 @@ import smtplib
 
 app = Flask(__name__)
 executor = ThreadPoolExecutor(max_workers=3)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 CORS(app, supports_credentials=True, origins="*")
 
-DATABASE = 'database.db'
+def resolve_database_path():
+    configured_path = os.environ.get('DATABASE_PATH', os.path.join(os.getcwd(), 'database.db'))
+    db_dir = os.path.dirname(configured_path) or '.'
+    if os.access(db_dir, os.W_OK):
+        return configured_path
+    return '/tmp/database.db'
+
+DATABASE = resolve_database_path()
 
 # Email Configuration
 def load_email_config():
@@ -179,7 +186,13 @@ def send_password_reset_email(email, reset_token):
 # ==================== DATABASE ====================
 
 def init_db():
-    conn = sqlite3.connect(DATABASE)
+    global DATABASE
+    try:
+        conn = sqlite3.connect(DATABASE)
+    except sqlite3.OperationalError:
+        # Render instances may not allow writes in the app directory.
+        DATABASE = '/tmp/database.db'
+        conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     
     cursor.execute('''
@@ -796,6 +809,7 @@ def serve_static(filename):
 
 if __name__ == "__main__":
     init_db()
-    app.run(host='0.0.0.0', port=8081, debug=True)
+    port = int(os.environ.get('PORT', 8081))
+    app.run(host='0.0.0.0', port=port, debug=False)
 else:
     init_db()
