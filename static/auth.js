@@ -723,6 +723,17 @@ async function handleLogin(e) {
 
 // ==================== FORGOT PASSWORD FUNCTIONS ====================
 
+// Direct click handler for the Send Reset Link button
+function handleForgotPasswordClick() {
+    console.log('handleForgotPasswordClick called');
+    handleForgotPassword({ 
+        preventDefault: function() {}, 
+        stopPropagation: function() {}, 
+        target: document.getElementById('forgot-password-form'),
+        target: { querySelector: function(sel) { return document.querySelector(sel); } }
+    });
+}
+
 async function handleForgotPassword(e) {
     e.preventDefault();
 
