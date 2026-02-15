@@ -27,13 +27,28 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True, origins="*")
 
 def resolve_database_path():
-    configured_path = os.environ.get('DATABASE_PATH', os.path.join(os.getcwd(), 'database.db'))
-    db_dir = os.path.dirname(configured_path) or '.'
-    if os.access(db_dir, os.W_OK):
-        return configured_path
+    configured_path = os.environ.get('DATABASE_PATH')
+    if configured_path:
+        db_dir = os.path.dirname(configured_path) or '.'
+        os.makedirs(db_dir, exist_ok=True)
+        if os.access(db_dir, os.W_OK):
+            return configured_path
+
+    # Render persistent disk default mount path
+    render_persistent_path = '/var/data/database.db'
+    render_dir = os.path.dirname(render_persistent_path)
+    if os.path.isdir(render_dir) and os.access(render_dir, os.W_OK):
+        return render_persistent_path
+
+    local_path = os.path.join(os.getcwd(), 'database.db')
+    local_dir = os.path.dirname(local_path) or '.'
+    if os.access(local_dir, os.W_OK):
+        return local_path
+
     return '/tmp/database.db'
 
 DATABASE = resolve_database_path()
+print(f"Using SQLite database: {DATABASE}")
 
 # Email Configuration
 def load_email_config():
