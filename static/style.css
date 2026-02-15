@@ -317,7 +317,7 @@ body {
 .nav-item:hover {
     background: rgba(0, 0, 0, 0.04);
     color: var(--text-main);
-    transform: translateX(4px);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 .nav-item.active {
@@ -438,12 +438,13 @@ button span {
 }
 
 .action-btn:hover {
-    transform: translateY(-3px) scale(1.02);
+    /* Disabled transform to prevent cursor flicker */
     box-shadow: 0 12px 30px rgba(255, 159, 10, 0.4);
 }
 
 .btn-icon { font-size: 1.2rem; transition: var(--transition); }
-.action-btn:hover .btn-icon { transform: scale(1.2) rotate(15deg); }
+/* Disabled icon animation to prevent cursor flicker */
+.action-btn:hover .btn-icon { }
 
 /* ============================================
    SUPPORTED SITES
@@ -472,7 +473,7 @@ button span {
     transition: var(--transition);
 }
 
-.supported-sites span:hover { transform: translateY(-2px); }
+.supported-sites span:hover { /* Disabled transform to prevent cursor flicker */ }
 .supported-sites i { font-size: 1.3rem; color: var(--accent-orange); }
 .supported-sites .brand-logo {
     width: 18px;
@@ -610,7 +611,7 @@ button span {
 }
 
 .stat-card:hover {
-    transform: translateY(-6px) scale(1.02);
+    /* Disabled transform to prevent cursor flicker */
     box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
 }
 
@@ -678,7 +679,7 @@ button span {
 }
 
 .tracker-card:hover {
-    transform: translateY(-6px) scale(1.01);
+    /* Disabled transform to prevent cursor flicker */
     box-shadow: 0 20px 50px rgba(255, 159, 10, 0.2);
 }
 
@@ -818,12 +819,12 @@ button span {
 .tracker-action:hover {
     background: var(--accent-orange);
     color: white;
-    transform: translateY(-2px);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 .tracker-action.delete:hover {
     background: var(--danger);
-    transform: translateY(-2px);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 /* ============================================
@@ -876,7 +877,7 @@ button span {
 .btn-secondary:hover {
     background: var(--accent-orange);
     color: white;
-    transform: translateY(-2px);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 .btn-secondary.small { padding: 8px 16px; font-size: 13px; }
@@ -896,7 +897,7 @@ button span {
     gap: 8px;
 }
 
-.btn-danger:hover { background: #e54a40; transform: translateY(-2px); }
+.btn-danger:hover { background: #e54a40; /* Disabled transform to prevent cursor flicker */ }
 
 /* ============================================
    PRICE TRENDS
@@ -934,7 +935,7 @@ button span {
     transition: var(--transition);
 }
 
-.time-btn:hover { color: var(--text-main); transform: translateY(-2px); }
+.time-btn:hover { color: var(--text-main); /* Disabled transform to prevent cursor flicker */ }
 
 .time-btn.active {
     background: var(--gradient-orange);
@@ -954,7 +955,7 @@ button span {
     transition: var(--transition);
 }
 
-.product-preview:hover { transform: translateX(4px); }
+.product-preview:hover { /* Disabled transform to prevent cursor flicker */ }
 
 .product-image {
     width: 100px;
@@ -1001,7 +1002,7 @@ button span {
     transition: var(--transition);
 }
 
-.price-box:hover { transform: translateY(-4px); }
+.price-box:hover { /* Disabled transform to prevent cursor flicker */ }
 
 .price-box.original {
     background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
@@ -1113,7 +1114,7 @@ button span {
 }
 
 .buy-now-btn:hover {
-    transform: translateY(-3px) scale(1.02);
+    /* Disabled transform to prevent cursor flicker */
     box-shadow: 0 12px 40px rgba(17, 153, 142, 0.4);
 }
 
@@ -1138,7 +1139,7 @@ button span {
     transition: var(--transition);
 }
 
-.detail-card:hover { transform: translateY(-2px); }
+.detail-card:hover { /* Disabled transform to prevent cursor flicker */ }
 
 .detail-icon {
     width: 48px;
@@ -1479,7 +1480,7 @@ button span {
 }
 
 .card-3d:hover {
-    transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) translateZ(10px);
+    /* Disabled 3D transform to prevent cursor flicker */
 }
 
 .glow-effect {
@@ -1796,7 +1797,7 @@ button span {
 }
 
 .settings-section:hover {
-    box-shadow: var(--shadow-hover);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 .settings-section h3 {
@@ -1934,7 +1935,7 @@ input:checked + .slider:before {
 .help-link:hover {
     background: rgba(255, 159, 10, 0.1);
     color: var(--accent-orange);
-    transform: translateX(4px);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 .help-link i {
@@ -2027,7 +2028,7 @@ input:checked + .slider:before {
 .social-links a:hover {
     background: var(--accent-orange);
     color: white;
-    transform: translateY(-3px);
+    /* Disabled transform to prevent cursor flicker */
 }
 
 /* Danger zone */
@@ -2276,7 +2277,7 @@ input:checked + .slider:before {
 }
 
 .celebration-btn.primary:hover {
-    transform: translateY(-2px);
+    /* Disabled transform to prevent cursor flicker */
     box-shadow: 0 8px 25px rgba(255, 159, 10, 0.5);
 }
 

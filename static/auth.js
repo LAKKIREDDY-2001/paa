@@ -23,23 +23,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const forgotForm = document.getElementById('forgot-form'); // Legacy ID support
 
     if (signupForm) {
-        signupForm.addEventListener('submit', handleSignup);
+        signupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSignup(e);
+        });
     }
 
     if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleLogin(e);
+        });
     }
 
     // Handle forgot password - check both IDs for compatibility
     if (forgotPasswordForm) {
-        forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+        forgotPasswordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleForgotPassword(e);
+        });
     } else if (forgotForm) {
         // Legacy support for forgot-form ID
-        forgotForm.addEventListener('submit', handleForgotPassword);
+        forgotForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleForgotPassword(e);
+        });
     }
 
     if (resetPasswordForm) {
-        resetPasswordForm.addEventListener('submit', handleResetPassword);
+        resetPasswordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleResetPassword(e);
+        });
     }
 
     initTilt();

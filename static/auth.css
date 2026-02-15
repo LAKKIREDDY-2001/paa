@@ -735,12 +735,15 @@ h1, h2, h3 {
     border-radius: 16px;
     padding: 12px 16px;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    /* Disabled hover transform to prevent cursor flickering */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .feature:hover,
 .auth-features:hover,
 .auth-card:hover {
-    transform: translateY(-3px) translateZ(4px);
+    /* Disabled transform to prevent cursor flicker */
+    transform: none;
 }
 
 .auth-card::before,
