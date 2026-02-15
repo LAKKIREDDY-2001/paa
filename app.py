@@ -1,0 +1,829 @@
+import os
+import re
+import sqlite3
+import random
+import string
+import json
+import secrets
+from concurrent.futures import ThreadPoolExecutor
+from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory
+from flask_cors import CORS
+import requests
+from bs4 import BeautifulSoup
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import smtplib
+
+app = Flask(__name__)
+executor = ThreadPoolExecutor(max_workers=3)
+app.secret_key = os.urandom(24)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+CORS(app, supports_credentials=True, origins="*")
+
+DATABASE = 'database.db'
+
+# Email Configuration
+def load_email_config():
+    config = {
+        'enabled': False,
+        'smtp_server': 'smtp.gmail.com',
+        'smtp_port': 587,
+        'smtp_email': '',
+        'smtp_password': '',
+        'from_name': 'AI Price Alert',
+        'provider': 'gmail'
+    }
+    config_file = 'email_config.json'
+    if os.path.exists(config_file):
+        try:
+            with open(config_file, 'r') as f:
+                file_config = json.load(f)
+                config.update(file_config)
+        except Exception as e:
+            print(f"Error loading email config: {e}")
+    if os.environ.get('SMTP_ENABLED'):
+        config['enabled'] = os.environ.get('SMTP_ENABLED').lower() == 'true'
+    if os.environ.get('SMTP_SERVER'):
+        config['smtp_server'] = os.environ.get('SMTP_SERVER')
+    if os.environ.get('SMTP_PORT'):
+        config['smtp_port'] = int(os.environ.get('SMTP_PORT'))
+    if os.environ.get('SMTP_EMAIL'):
+        config['smtp_email'] = os.environ.get('SMTP_EMAIL')
+    if os.environ.get('SMTP_PASSWORD'):
+        config['smtp_password'] = os.environ.get('SMTP_PASSWORD')
+    if os.environ.get('SMTP_FROM_NAME'):
+        config['from_name'] = os.environ.get('SMTP_FROM_NAME')
+    return config
+
+EMAIL_CONFIG = load_email_config()
+
+# Load other configs
+def load_json_config(filename, defaults):
+    config = defaults.copy()
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r') as f:
+                file_config = json.load(f)
+                config.update(file_config)
+        except Exception as e:
+            print(f"Error loading {filename}: {e}")
+    return config
+
+TWILIO_CONFIG = load_json_config('twilio_config.json', {
+    'enabled': False, 'account_sid': '', 'auth_token': '', 'phone_number': ''
+})
+
+TELEGRAM_CONFIG = load_json_config('telegram_config.json', {
+    'enabled': False, 'bot_token': '', 'webhook_url': '', 'bot_username': ''
+})
+
+WHATSAPP_CONFIG = load_json_config('whatsapp_config.json', {
+    'enabled': False, 'twilio_account_sid': '', 'twilio_auth_token': '',
+    'twilio_whatsapp_number': '+14155238886', 'from_name': 'AI Price Alert'
+})
+
+# ==================== EMAIL FUNCTIONS ====================
+
+def send_mail(to_email, subject, html_body, text_body=None):
+    if not EMAIL_CONFIG['enabled']:
+        print(f"\n{'='*60}")
+        print("📧 EMAIL SENT - DEMO MODE")
+        print(f"{'='*60}")
+        print(f"To: {to_email}")
+        print(f"Subject: {subject}")
+        print(f"{'='*60}\n")
+        return True
+    
+    if not EMAIL_CONFIG.get('smtp_email') or not EMAIL_CONFIG.get('smtp_password'):
+        print(f"Email not configured - skipping send to {to_email}")
+        return False
+    
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['smtp_email']}>"
+        msg['To'] = to_email
+        if text_body:
+            text_part = MIMEText(text_body, 'plain')
+            msg.attach(text_part)
+        html_part = MIMEText(html_body, 'html')
+        msg.attach(html_part)
+        smtp_port = EMAIL_CONFIG.get('smtp_port', 587)
+        use_tls = EMAIL_CONFIG.get('use_tls', True)
+        if use_tls:
+            with smtplib.SMTP(EMAIL_CONFIG['smtp_server'], smtp_port, timeout=30) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(EMAIL_CONFIG['smtp_email'], EMAIL_CONFIG['smtp_password'])
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP_SSL(EMAIL_CONFIG['smtp_server'], smtp_port, timeout=30) as server:
+                server.login(EMAIL_CONFIG['smtp_email'], EMAIL_CONFIG['smtp_password'])
+                server.send_message(msg)
+        print(f"✓ Email sent successfully to {to_email}")
+        return True
+    except Exception as e:
+        print(f"✗ Error sending email to {to_email}: {e}")
+        return False
+
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=6))
+
+def send_email_otp(email, otp, purpose="verification"):
+    if EMAIL_CONFIG['enabled']:
+        try:
+            msg = MIMEText(f'Your AI Price Alert {purpose} code is: {otp}\n\nThis code expires in 10 minutes.')
+            msg['Subject'] = f'AI Price Alert - {purpose.title()} Code'
+            msg['From'] = f"{EMAIL_CONFIG['from_name']} <{EMAIL_CONFIG['smtp_email']}>"
+            msg['To'] = email
+            with smtplib.SMTP(EMAIL_CONFIG['smtp_server'], EMAIL_CONFIG['smtp_port'], timeout=30) as server:
+                server.starttls()
+                server.login(EMAIL_CONFIG['smtp_email'], EMAIL_CONFIG['smtp_password'])
+                server.send_message(msg)
+            return True
+        except Exception as e:
+            print(f"Email send error: {e}")
+            return False
+    else:
+        print(f"\n{'='*50}")
+        print(f"📧 EMAIL OTP ({purpose.upper()}) - DEMO MODE")
+        print(f"{'='*50}")
+        print(f"To: {email}")
+        print(f"OTP: {otp}")
+        print(f"{'='*50}\n")
+        return True
+
+def send_password_reset_email(email, reset_token):
+    host_url = EMAIL_CONFIG.get('host_url', 'http://localhost:8081')
+    reset_link = f"{host_url}/reset-password?token={reset_token}"
+    email_content = f'''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head><meta charset="UTF-8"><title>Password Reset</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #1a1a2e;">Password Reset Request</h1>
+        <p>You requested to reset your password for AI Price Alert.</p>
+        <p>Click the button below to reset your password:</p>
+        <a href="{reset_link}" style="display: inline-block; padding: 16px 32px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Reset Password</a>
+        <p style="color: #666; margin-top: 20px;">This link expires in 30 minutes.</p>
+    </body>
+    </html>
+    '''
+    return send_mail(to_email=email, subject='AI Price Alert - Password Reset', html_body=email_content)
+
+# ==================== DATABASE ====================
+
+def init_db():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            phone TEXT,
+            email_verified INTEGER DEFAULT 0,
+            phone_verified INTEGER DEFAULT 0,
+            two_factor_enabled INTEGER DEFAULT 0,
+            two_factor_method TEXT DEFAULT 'none',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS otp_verification (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            email TEXT,
+            phone TEXT,
+            email_otp TEXT,
+            phone_otp TEXT,
+            email_otp_expiry TIMESTAMP,
+            phone_otp_expiry TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            reset_token TEXT NOT NULL UNIQUE,
+            reset_token_expiry TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS pending_signups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            signup_token TEXT UNIQUE NOT NULL,
+            username TEXT NOT NULL,
+            email TEXT NOT NULL,
+            password TEXT NOT NULL,
+            phone TEXT,
+            email_otp TEXT,
+            email_otp_expiry TIMESTAMP,
+            phone_otp TEXT,
+            phone_otp_expiry TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS trackers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            url TEXT NOT NULL,
+            product_name TEXT,
+            current_price REAL NOT NULL,
+            target_price REAL NOT NULL,
+            currency TEXT,
+            currency_symbol TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+# ==================== ROUTES ====================
+
+@app.route('/')
+def root():
+    """Default entry route to dashboard"""
+    return render_template('index.html')
+
+@app.route('/home')
+def home():
+    """Alias route to dashboard"""
+    return render_template('index.html')
+
+@app.route('/about')
+def about():
+    """About page with SEO content"""
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact():
+    """Contact page with SEO content"""
+    return render_template('contact.html')
+
+@app.route('/privacy')
+def privacy():
+    """Privacy policy page with SEO content"""
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    """Terms of service page with SEO content"""
+    return render_template('terms.html')
+
+@app.route('/blog')
+def blog():
+    """Blog listing page"""
+    return render_template('blog.html')
+
+@app.route('/blog/how-to-track-product-prices-online')
+def blog_track_prices():
+    """Blog post 1"""
+    return render_template('blog_track_prices.html')
+
+@app.route('/blog/best-price-alert-tools-india')
+def blog_best_tools():
+    """Blog post 2"""
+    return render_template('blog_best_tools.html')
+
+@app.route('/blog/save-money-price-trackers')
+def blog_save_money():
+    """Blog post 3"""
+    return render_template('blog_save_money.html')
+
+@app.route('/blog/amazon-price-history')
+def blog_amazon_history():
+    """Blog post 4"""
+    return render_template('blog_amazon_history.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    """Signup page - redirect to dashboard if already logged in"""
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "Invalid request body"}), 400
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        phone = data.get('phone')
+
+        if not all([username, email, password]):
+            return jsonify({"error": "Missing data"}), 400
+
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({"error": "Email already exists"}), 409
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pending_signups (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    signup_token TEXT UNIQUE NOT NULL,
+                    username TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    password TEXT NOT NULL,
+                    phone TEXT,
+                    email_otp TEXT,
+                    email_otp_expiry TIMESTAMP,
+                    phone_otp TEXT,
+                    phone_otp_expiry TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+
+            cursor.execute("SELECT id FROM pending_signups WHERE email = ?", (email,))
+            if cursor.fetchone():
+                cursor.execute("DELETE FROM pending_signups WHERE email = ?", (email,))
+
+            conn.commit()
+            conn.close()
+
+            import uuid
+            signup_token = str(uuid.uuid4())
+            
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO pending_signups (signup_token, username, email, password, phone)
+                VALUES (?, ?, ?, ?, ?)
+            """, (signup_token, username, email, generate_password_hash(password), phone))
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "success": "OTP sent for verification",
+                "signupToken": signup_token,
+                "email": email,
+                "phone": phone
+            }), 200
+        except Exception:
+            return jsonify({"error": "Signup failed. Please try again."}), 500
+
+    return render_template('signup.html')
+
+@app.route('/api/signup-complete', methods=['POST'])
+def signup_complete():
+    """Complete signup after OTP verification"""
+    data = request.get_json()
+    signup_token = data.get('signupToken')
+    email_otp = data.get('emailOTP', '')
+    
+    if not signup_token:
+        return jsonify({"error": "Signup token is required"}), 400
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM pending_signups WHERE signup_token = ?", (signup_token,))
+    pending = cursor.fetchone()
+    
+    if not pending:
+        conn.close()
+        return jsonify({"error": "Invalid or expired signup session. Please start over."}), 400
+    
+    signup_id, stored_token, username, email, password, phone, stored_email_otp, stored_email_otp_expiry, stored_phone_otp, stored_phone_otp_expiry, created_at = pending
+    
+    expiry = datetime.fromisoformat(created_at) + timedelta(minutes=30)
+    if datetime.now() > expiry:
+        cursor.execute("DELETE FROM pending_signups WHERE id = ?", (signup_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"error": "Signup session expired. Please start over."}), 400
+    
+    # Verify email OTP
+    email_verified = False
+    if email_otp:
+        if stored_email_otp and stored_email_otp == email_otp:
+            if stored_email_otp_expiry:
+                otp_expiry = datetime.fromisoformat(stored_email_otp_expiry)
+                if datetime.now() > otp_expiry:
+                    conn.close()
+                    return jsonify({"error": "Email OTP has expired"}), 400
+            email_verified = True
+        else:
+            conn.close()
+            return jsonify({"error": "Invalid email OTP"}), 400
+    
+    if not email_verified:
+        conn.close()
+        return jsonify({"error": "Email verification is required", "requiresEmailVerification": True}), 400
+    
+    # Create the account
+    try:
+        cursor.execute("""
+            INSERT INTO users (username, email, password, phone, email_verified)
+            VALUES (?, ?, ?, ?, ?)
+        """, (username, email, password, phone, 1))
+        user_id = cursor.lastrowid
+        
+        cursor.execute("""
+            INSERT INTO otp_verification (user_id, email, phone)
+            VALUES (?, ?, ?)
+        """, (user_id, email, phone))
+        
+        cursor.execute("DELETE FROM pending_signups WHERE id = ?", (signup_id,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return jsonify({"error": "Email already exists"}), 409
+    finally:
+        conn.close()
+    
+    return jsonify({
+        "success": "Account created successfully!",
+        "userId": user_id,
+        "message": "Redirecting to login..."
+    }), 201
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page - redirect to dashboard if already logged in"""
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({"error": "Missing data"}), 400
+        
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            user = cursor.fetchone()
+            conn.close()
+
+            if user and check_password_hash(user[3], password):
+                session['user_id'] = user[0]
+                return jsonify({
+                    "success": "Logged in successfully",
+                    "redirect": "/dashboard"
+                }), 200
+            else:
+                return jsonify({"error": "Invalid credentials"}), 401
+        except Exception:
+            return jsonify({"error": "Login failed. Please try again."}), 500
+    
+    return render_template('login.html')
+
+@app.route('/dashboard')
+def dashboard():
+    """Dashboard page"""
+    return render_template('index.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('root'))
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        data = request.get_json()
+        email = data.get('email')
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
+        
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user:
+            reset_token = secrets.token_urlsafe(32)
+            expiry = datetime.now() + timedelta(minutes=30)
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO password_resets (user_id, reset_token, reset_token_expiry)
+                VALUES (?, ?, ?)
+            """, (user[0], reset_token, expiry.isoformat()))
+            conn.commit()
+            conn.close()
+            send_password_reset_email(email, reset_token)
+        
+        return jsonify({"success": True, "message": "If an account exists, a reset link has been sent"}), 200
+    
+    return render_template('forgot-password.html')
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    token = request.args.get('token')
+    if not token:
+        return render_template('error.html', error="Invalid reset link")
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, reset_token_expiry FROM password_resets WHERE reset_token = ?", (token,))
+    reset_record = cursor.fetchone()
+    
+    if not reset_record:
+        conn.close()
+        return render_template('error.html', error="Invalid or expired reset link")
+    
+    expiry = datetime.fromisoformat(reset_record[1]) if reset_record[1] else None
+    if expiry and datetime.now() > expiry:
+        conn.close()
+        return render_template('error.html', error="Reset link has expired")
+    
+    user_id = reset_record[0]
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        new_password = data.get('password')
+        if not new_password or len(new_password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters"}), 400
+        
+        hashed = generate_password_hash(new_password)
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, user_id))
+        cursor.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True, "message": "Password reset successful"}), 200
+    
+    conn.close()
+    return render_template('reset-password.html', token=token)
+
+@app.route('/error')
+def error_page():
+    error = request.args.get('error', 'An unexpected error occurred')
+    return render_template('error.html', error=error)
+
+# ==================== API ROUTES ====================
+
+@app.route('/api/user', methods=['GET'])
+def get_user():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email, phone FROM users WHERE id = ?", (session['user_id'],))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return jsonify({"id": user[0], "username": user[1], "email": user[2], "phone": user[3]})
+    return jsonify({"error": "User not found"}), 404
+
+@app.route('/api/trackers', methods=['GET', 'POST', 'DELETE'])
+def trackers():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not logged in"}), 401
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    
+    if request.method == 'GET':
+        cursor.execute("SELECT id, url, product_name, current_price, target_price, currency, currency_symbol, created_at FROM trackers WHERE user_id = ? ORDER BY created_at DESC", (session['user_id'],))
+        trackers_list = cursor.fetchall()
+        conn.close()
+        result = []
+        for t in trackers_list:
+            result.append({
+                "id": t[0], "url": t[1], "productName": t[2] or "Product",
+                "currentPrice": t[3], "targetPrice": t[4],
+                "currency": t[5], "currencySymbol": t[6], "createdAt": t[7]
+            })
+        return jsonify(result)
+    
+    if request.method == 'POST':
+        data = request.json
+        cursor.execute("""
+            INSERT INTO trackers (user_id, url, product_name, current_price, target_price, currency, currency_symbol)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (session['user_id'], data.get('url'), data.get('productName'), 
+              data.get('currentPrice'), data.get('targetPrice'), 
+              data.get('currency', 'USD'), data.get('currencySymbol', '$')))
+        tracker_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return jsonify({"id": tracker_id, "message": "Tracker created"}), 201
+    
+    if request.method == 'DELETE':
+        data = request.json
+        tracker_id = data.get('id')
+        cursor.execute("DELETE FROM trackers WHERE id = ? AND user_id = ?", (tracker_id, session['user_id']))
+        conn.commit()
+        conn.close()
+        return jsonify({"message": "Tracker deleted"})
+
+# ==================== PASSWORD RESET API ROUTES ====================
+
+@app.route('/api/forgot-password', methods=['POST'])
+def api_forgot_password():
+    """API endpoint for forgot password - handles JSON requests"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid request"}), 400
+    
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        reset_token = secrets.token_urlsafe(32)
+        expiry = datetime.now() + timedelta(minutes=30)
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO password_resets (user_id, reset_token, reset_token_expiry)
+            VALUES (?, ?, ?)
+        """, (user[0], reset_token, expiry.isoformat()))
+        conn.commit()
+        conn.close()
+        send_password_reset_email(email, reset_token)
+    
+    # Always return success to prevent email enumeration
+    return jsonify({"success": True, "message": "If an account exists, a reset link has been sent"}), 200
+
+@app.route('/api/reset-password', methods=['POST'])
+def api_reset_password():
+    """API endpoint for reset password - handles JSON requests"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid request"}), 400
+    
+    token = data.get('token')
+    password = data.get('password')
+    
+    if not token:
+        return jsonify({"error": "Token is required"}), 400
+    
+    if not password or len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id, reset_token_expiry FROM password_resets WHERE reset_token = ?", (token,))
+    reset_record = cursor.fetchone()
+    
+    if not reset_record:
+        conn.close()
+        return jsonify({"error": "Invalid or expired reset link"}), 400
+    
+    expiry = datetime.fromisoformat(reset_record[1]) if reset_record[1] else None
+    if expiry and datetime.now() > expiry:
+        conn.close()
+        return jsonify({"error": "Reset link has expired"}), 400
+    
+    user_id = reset_record[0]
+    hashed = generate_password_hash(password)
+    cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, user_id))
+    cursor.execute("DELETE FROM password_resets WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "message": "Password reset successful"}), 200
+
+# ==================== PRICE TRACKING ====================
+
+def parse_price(price_str):
+    if not price_str:
+        return None
+    price_str = re.sub(r'[^\d.]', '', price_str)
+    try:
+        return float(price_str)
+    except ValueError:
+        return None
+
+def get_site_info(url):
+    url_lower = url.lower()
+    if 'amazon' in url_lower:
+        if 'amazon.in' in url_lower:
+            return 'amazon', 'INR', '₹'
+        elif 'amazon.co.uk' in url_lower:
+            return 'amazon', 'GBP', '£'
+        else:
+            return 'amazon', 'USD', '$'
+    elif 'flipkart' in url_lower:
+        return 'flipkart', 'INR', '₹'
+    elif 'myntra' in url_lower:
+        return 'myntra', 'INR', '₹'
+    elif 'ajio' in url_lower:
+        return 'ajio', 'INR', '₹'
+    elif 'meesho' in url_lower:
+        return 'meesho', 'INR', '₹'
+    elif 'snapdeal' in url_lower:
+        return 'snapdeal', 'INR', '₹'
+    else:
+        return 'unknown', 'USD', '$'
+
+def scrape_price(soup, site, currency_symbol):
+    """Generic price scraper"""
+    if site == 'amazon':
+        price_elem = soup.find("span", {"class": "a-price"})
+        if price_elem:
+            whole = price_elem.find("span", {"class": "a-price-whole"})
+            if whole:
+                price = parse_price(whole.get_text())
+                if price:
+                    return price
+    
+    if site in ['flipkart', 'myntra', 'ajio', 'meesho', 'snapdeal']:
+        price_elem = soup.find(string=lambda t: t and '₹' in t)
+        if price_elem:
+            nums = re.findall(r'₹\s*([\d,]+\.?\d*)', price_elem)
+            for match in nums:
+                price = parse_price(match.replace(',', ''))
+                if price and 50 < price < 100000:
+                    return price
+    
+    return None
+
+@app.route('/get-price', methods=['POST'])
+def get_price():
+    data = request.json
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
+    
+    if url.lower().startswith('test://'):
+        mock_price = round(random.uniform(10, 500), 2)
+        return jsonify({
+            "price": mock_price, "currency": "USD", "currency_symbol": "$",
+            "productName": "Test Product", "isTestMode": True
+        })
+    
+    if not (url.startswith('http://') or url.startswith('https://')):
+        return jsonify({"error": "Invalid URL format"}), 400
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=8)
+        if response.status_code != 200:
+            return jsonify({"error": f"Failed to fetch page (Status: {response.status_code})"}), response.status_code
+        
+        soup = BeautifulSoup(response.content, "html.parser")
+        site, currency, currency_symbol = get_site_info(url)
+        price = scrape_price(soup, site, currency_symbol)
+        
+        # Try to get product name from title
+        product_name = "Product"
+        if soup.title:
+            title = soup.title.get_text().strip()
+            product_name = re.sub(r'\s*[-|]\s*(Amazon|Flipkart|Myntra|Ajio|Meesho|Snapdeal)\s*$', '', title, flags=re.IGNORECASE).strip()
+        
+        if price is None:
+            return jsonify({"error": "Could not find price on this page"}), 404
+        
+        return jsonify({
+            "price": price, "currency": currency, 
+            "currency_symbol": currency_symbol, "productName": product_name
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==================== STATIC FILES ====================
+
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
+
+# ==================== MAIN ====================
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host='0.0.0.0', port=8081, debug=True)
+else:
+    init_db()

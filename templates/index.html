@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - AI Price Alert | Track Prices & Save Money</title>
+
+    <meta name="description" content="Create your free account on AI Price Alert. Start tracking product prices across Amazon, Flipkart, Myntra and 100+ stores. Never miss a price drop again!">
+    <meta name="keywords" content="price tracker, price alert, sign up, register, amazon price tracker, flipkart price tracker, myntra price alert, save money shopping">
+    <meta property="og:title" content="Sign Up - AI Price Alert | Never Miss a Price Drop">
+    <meta property="og:description" content="Create your free account and start tracking prices across 100+ stores. Save money on every purchase!">
+    <meta property="og:image" content="https://aipricealert.com/static/og-image.png">
+    <meta property="og:url" content="https://aipricealert.com/dashboard">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sign Up - AI Price Alert">
+    <meta name="twitter:description" content="Never miss a price drop again! Track prices across 100+ stores.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔔</text></svg>">
+    <link rel="canonical" href="https://aipricealert.com/dashboard">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- 3D Background Scene -->
+    <div class="scene">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid"></div>
+    </div>
+
+    <!-- 3D Celebration Modal -->
+    <div id="celebration-modal" class="celebration-modal">
+        <div class="celebration-content">
+            <button class="celebration-close" onclick="closeCelebration()" title="Close">
+                <i class="fa fa-times"></i>
+            </button>
+            
+            <div class="celebration-main">
+                <!-- 3D Trophy -->
+                <div class="trophy-container">
+                    <div class="trophy-3d">
+                        <div class="trophy-star trophy-star-1">⭐</div>
+                        <div class="trophy-star trophy-star-2">✨</div>
+                        <div class="trophy-star trophy-star-3">🌟</div>
+                        <div class="trophy-cup">
+                            <div class="trophy-cup-inner">
+                                <span class="trophy-icon">🏆</span>
+                            </div>
+                        </div>
+                        <div class="trophy-ribbon">
+                            <span>YOU DID IT!</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <h2 class="celebration-title">
+                    <span class="title-word">🎉</span>
+                    <span class="title-word">TARGET</span>
+                    <span class="title-word highlight">REACHED!</span>
+                    <span class="title-word">🎉</span>
+                </h2>
+                
+                <p class="celebration-product" id="celeb-product-name">Loading...</p>
+                
+                <div class="celebration-price">
+                    <div class="price-badge">
+                        <span class="price-drop">⬇️ PRICE DROP!</span>
+                    </div>
+                    <div class="savings-display">
+                        <span class="savings-label">You Save</span>
+                        <span class="savings-amount" id="celeb-savings">$0.00</span>
+                    </div>
+                </div>
+                
+                <div class="celebration-actions">
+                    <button class="celebration-btn primary" onclick="buyNowFromCelebration()">
+                        <i class="fa fa-shopping-cart"></i>
+                        Buy Now
+                    </button>
+                    <button class="celebration-btn secondary" onclick="closeCelebration()">
+                        <i class="fa fa-check"></i>
+                        Awesome!
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Confetti Container -->
+            <div class="confetti-container" id="confetti-container"></div>
+        </div>
+    </div>
+
+    <!-- Main Browser Window -->
+    <div class="browser-window tilt-root" data-tilt="8">
+        <div class="browser-header">
+            <div class="window-dots">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+            <div class="nav-arrows">
+                <i class="fa fa-chevron-left" style="color: #999;"></i>
+                <i class="fa fa-chevron-right" style="color: #999; margin-left: 10px;"></i>
+            </div>
+            <div class="address-bar">
+                <i class="fa fa-lock" style="margin-right: 8px; font-size: 10px;"></i>
+                app.aipricealert.com/dashboard
+            </div>
+            <div class="user-menu">
+                <span id="user-greeting">Welcome, User</span>
+                <a href="/logout" class="logout-btn"><i class="fa fa-sign-out"></i></a>
+            </div>
+        </div>
+
+        <div class="viewport">
+<div class="app-sidebar">
+                <div class="app-logo">
+                    <div class="logo-icon">
+                        <i class="fa fa-bell"></i>
+                    </div>
+                    <div class="logo-text">
+                        <span class="logo-name">AI Price Alert</span>
+                        <span class="logo-tagline">Smart Tracking</span>
+                    </div>
+                </div>
+                <h3 style="margin-bottom: 30px; display: none;">🔔 AI Tracker</h3>
+                <div class="nav-item active" data-view="new-alert"><i class="fa fa-plus-circle"></i> <span>New Alert</span></div>
+                <div class="nav-item" data-view="my-trackers"><i class="fa fa-list"></i> <span>My Trackers</span></div>
+                <div class="nav-item" data-view="price-trends"><i class="fa fa-chart-line"></i> <span>Price Trends</span></div>
+                <div class="nav-item" data-view="settings"><i class="fa fa-gear"></i> <span>Settings</span></div>
+                
+                <div class="sidebar-stats">
+                    <div class="stat-item">
+                        <span class="stat-value pulse" id="sidebar-active-trackers">0</span>
+                        <span class="stat-label">Active</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value pulse" id="sidebar-deals">0</span>
+                        <span class="stat-label">Deals</span>
+                    </div>
+                </div>
+                
+            </div>
+
+            <div class="app-main">
+                <!-- New Alert View -->
+                <div id="view-new-alert" class="view active">
+                    <div class="input-container">
+                        <h1 class="gradient-text">Paste Link. Save Money.</h1>
+                        <p style="color: #666; margin-bottom: 40px;">The AI tracks the price 24/7 and sends you a notification the second it drops.</p>
+                        
+                        <input type="text" id="urlInput" class="product-input" placeholder="Paste Amazon, Flipkart, Myntra, Ajio, Meesho, Snapdeal, Tata CLiQ, or Reliance Digital link here...">
+                        
+                        <div id="priceStep" style="display: none;">
+                            <p><strong>Set Target Price:</strong></p>
+                            <input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="$0.00">
+                        </div>
+
+                        <button id="mainBtn" class="action-btn" onclick="handleFlow()">
+                            <span class="btn-text">Start AI Tracking</span>
+                            <span class="btn-icon"><i class="fa fa-bolt"></i></span>
+                        </button>
+                        
+                        <div class="supported-sites">
+                            <span><i class="fa fa-amazon"></i> Amazon</span>
+                            <span><i class="fa fa-shopping-cart"></i> Flipkart</span>
+                            <span><i class="fa fa-tag"></i> Myntra</span>
+                            <span><i class="fa fa-shopping-bag"></i> Ajio</span>
+                            <span><i class="fa fa-mobile"></i> Meesho</span>
+                            <span><i class="fa fa-shopping-cart"></i> Snapdeal</span>
+                            <span><i class="fa fa-store"></i> Tata CLiQ</span>
+                            <span><i class="fa fa-laptop"></i> Reliance Digital</span>
+                        </div>
+                        
+                        <!-- AdSense Ad Container -->
+                        <div class="ad-container" data-ad-slot="dashboardBanner">
+                            <div class="ad-placeholder">
+                                <div class="ad-placeholder-content">
+                                    <span class="ad-label">Advertisement</span>
+                                    <div class="ad-placeholder-box">
+                                        <i class="fa fa-ad"></i>
+                                        <span>Your Ad Here</span>
+                                        <small>Configure AdSense to display real ads</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Trackers View -->
+                <div id="view-my-trackers" class="view">
+                    <div class="trackers-header">
+                        <h2><i class="fa fa-list"></i> My Trackers</h2>
+                        <div class="trackers-actions">
+                            <div class="search-box">
+                                <i class="fa fa-search"></i>
+                                <input type="text" id="tracker-search" placeholder="Search trackers..." oninput="filterTrackers()">
+                            </div>
+                            <select id="sort-trackers" onchange="sortTrackers()">
+                                <option value="date">Sort by Date</option>
+                                <option value="name">Sort by Name</option>
+                                <option value="price">Sort by Price</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">All <span class="count" id="count-all">0</span></button>
+                        <button class="filter-tab" data-filter="active" onclick="setFilter('active')">Active <span class="count" id="count-active">0</span></button>
+                        <button class="filter-tab reached-tab" data-filter="reached" onclick="setFilter('reached')">Target Reached <span class="count" id="count-reached">0</span></button>
+                    </div>
+                    
+                    <div class="stats-cards">
+                        <div class="stat-card">
+                            <div class="stat-icon blue"><i class="fa fa-list"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="total-trackers">0</span>
+                                <span class="stat-desc">Total Trackers</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="active-deals">0</span>
+                                <span class="stat-desc">Deals Found</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon gold"><i class="fa fa-arrow-down"></i></div>
+                            <div class="stat-info">
+                                <span class="stat-number" id="avg-savings">0%</span>
+                                <span class="stat-desc">Avg Savings</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="trackers-list" class="trackers-grid">
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fa fa-rocket"></i>
+                            </div>
+                            <h3>No trackers yet!</h3>
+                            <p>Create your first price alert to start saving money</p>
+                            <button class="action-btn" onclick="switchView('new-alert')">
+                                <span class="btn-text">Create Tracker</span>
+                                <span class="btn-icon"><i class="fa fa-plus"></i></span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                        <span id="selected-count">0 selected</span>
+                        <button class="btn-secondary" onclick="deleteSelected()"><i class="fa fa-trash"></i> Delete Selected</button>
+                        <button class="btn-secondary" onclick="exportTrackers()"><i class="fa fa-download"></i> Export</button>
+                    </div>
+                </div>
+
+                <!-- Price Trends View -->
+                <div id="view-price-trends" class="view">
+                    <div class="trends-header">
+                        <h2><i class="fa fa-chart-line"></i> Price Trends</h2>
+                        <div class="time-filter">
+                            <button class="time-btn active" onclick="setTimePeriod('7d')">7 Days</button>
+                            <button class="time-btn" onclick="setTimePeriod('30d')">30 Days</button>
+                            <button class="time-btn" onclick="setTimePeriod('90d')">90 Days</button>
+                        </div>
+                    </div>
+                    
+                    <div class="product-preview" id="product-preview">
+                        <div class="product-image">
+                            <i class="fa fa-shopping-bag"></i>
+                        </div>
+                        <div class="product-details">
+                            <h3>Select a tracker to view trends</h3>
+                            <p>Click the chart icon on any tracker to see price history</p>
+                        </div>
+                    </div>
+                    
+                    <div class="trends-chart-container">
+                        <div class="price-comparison">
+                            <div class="price-box original">
+                                <span class="price-label">Original Price</span>
+                                <span class="price-value" id="original-price">--</span>
+                            </div>
+                            <div class="price-arrow">
+                                <i class="fa fa-arrow-right"></i>
+                            </div>
+                            <div class="price-box current">
+                                <span class="price-label">Current Price</span>
+                                <span class="price-value" id="current-price">--</span>
+                            </div>
+                            <div class="price-box savings-box">
+                                <span class="price-label">You Save</span>
+                                <span class="price-value" id="savings-amount">--</span>
+                            </div>
+                        </div>
+                        
+                        <div class="chart-main">
+                            <canvas id="priceChart"></canvas>
+                        </div>
+                        
+                        <div class="price-prediction">
+                            <div class="prediction-card" id="prediction-card">
+                                <div class="prediction-icon">
+                                    <i class="fa fa-bolt"></i>
+                                </div>
+                                <div class="prediction-text">
+                                    <strong>Price Prediction</strong>
+                                    <p id="prediction-text">Select a tracker to see prediction</p>
+                                </div>
+                                <div class="confidence" id="confidence">--%</div>
+                            </div>
+                        </div>
+                        
+                        <button class="buy-now-btn" id="buy-now-btn" style="display: none;">
+                            <i class="fa fa-shopping-cart"></i> Buy Now at Current Price
+                        </button>
+                    </div>
+                    
+                    <div class="trend-details">
+                        <div class="detail-card">
+                            <div class="detail-icon"><i class="fa fa-clock-o"></i></div>
+                            <div>
+                                <strong>Lowest Price</strong>
+                                <span id="trend-lowest">--</span>
+                            </div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-icon"><i class="fa fa-trophy"></i></div>
+                            <div>
+                                <strong>Highest Price</strong>
+                                <span id="trend-highest">--</span>
+                            </div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-icon"><i class="fa fa-calendar"></i></div>
+                            <div>
+                                <strong>Tracked Since</strong>
+                                <span id="trend-since">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings View -->
+                <div id="view-settings" class="view">
+                    <h2><i class="fa fa-cog"></i> Settings</h2>
+                    
+                    <div class="settings-grid">
+                        <!-- Quick Actions -->
+                        <div class="settings-section">
+                            <h3><i class="fa fa-bolt"></i> Quick Actions</h3>
+                            <div class="quick-actions">
+                                <button class="action-btn" onclick="switchView('new-alert')">
+                                    <i class="fa fa-plus"></i> New Alert
+                                </button>
+                                <button class="action-btn secondary" onclick="autoRefreshAllPrices()">
+                                    <i class="fa fa-refresh"></i> Refresh All
+                                </button>
+                                <button class="action-btn secondary" onclick="exportData()">
+                                    <i class="fa fa-download"></i> Export Data
+                                </button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Auto-Refresh</label>
+                                    <p>Automatically check prices in background</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-refresh-enabled" checked onchange="toggleAutoRefresh()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-bell"></i> Notifications</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Push Notifications</label>
+                                    <p>Get browser notifications when price drops</p>
+                                </div>
+                                <input type="checkbox" id="push-notifications" checked onchange="saveSettings()">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Desktop Notifications</label>
+                                    <p>Show desktop alerts even when tab is closed</p>
+                                </div>
+                                <input type="checkbox" id="desktop-notifications" onchange="requestNotificationPermission()">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Sound Alerts</label>
+                                    <p>Play sound when price drops</p>
+                                </div>
+                                <input type="checkbox" id="sound-alerts" checked onchange="saveSettings()">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Email Alerts</label>
+                                    <p>Receive daily price update summaries</p>
+                                </div>
+                                <input type="checkbox" id="email-alerts" onchange="saveSettings()">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Telegram Bot</label>
+                                    <p>Receive instant alerts on Telegram</p>
+                                </div>
+                                <button class="btn-secondary small" onclick="connectTelegram()">Connect</button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>WhatsApp Notifications</label>
+                                    <p>Get price alerts on WhatsApp</p>
+                                </div>
+                                <button class="btn-secondary small" onclick="connectWhatsApp()">Connect</button>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-paint-brush"></i> Appearance</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Dark Mode</label>
+                                    <p>Switch between light and dark theme</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="dark-mode" onchange="toggleTheme()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Compact View</label>
+                                    <p>Show more trackers per page</p>
+                                </div>
+                                <input type="checkbox" id="compact-view" onchange="saveSettings()">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Show Animations</label>
+                                    <p>Enable 3D animations and effects</p>
+                                </div>
+                                <input type="checkbox" id="show-animations" checked onchange="saveSettings()">
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-refresh"></i> Tracking</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Refresh Interval</label>
+                                    <p>How often to check prices</p>
+                                </div>
+                                <select id="refresh-interval" onchange="saveSettings(); restartAutoRefresh();">
+                                    <option value="5">Every 5 minutes</option>
+                                    <option value="15" selected>Every 15 minutes</option>
+                                    <option value="30">Every 30 minutes</option>
+                                    <option value="60">Every hour</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Auto-Delete Old Trackers</label>
+                                    <p>Remove trackers older than</p>
+                                </div>
+                                <select id="auto-delete" onchange="saveSettings()">
+                                    <option value="0">Never</option>
+                                    <option value="7">7 days</option>
+                                    <option value="30" selected>30 days</option>
+                                    <option value="90">90 days</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Price Drop Alert %</label>
+                                    <p>Notify when price drops by</p>
+                                </div>
+                                <select id="drop-percentage" onchange="saveSettings()">
+                                    <option value="5">5%</option>
+                                    <option value="10" selected>10%</option>
+                                    <option value="15">15%</option>
+                                    <option value="20">20%</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Max Trackers</label>
+                                    <p>Maximum number of trackers</p>
+                                </div>
+                                <select id="max-trackers" onchange="saveSettings()">
+                                    <option value="50">50 trackers</option>
+                                    <option value="100" selected>100 trackers</option>
+                                    <option value="200">200 trackers</option>
+                                    <option value="500">500 trackers</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-database"></i> Data & Backup</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Export Data</label>
+                                    <p>Download all your trackers as JSON</p>
+                                </div>
+                                <button class="btn-secondary" onclick="exportData()">
+                                    <i class="fa fa-download"></i> Export
+                                </button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Import Data</label>
+                                    <p>Restore trackers from backup</p>
+                                </div>
+                                <button class="btn-secondary" onclick="document.getElementById('import-file').click()">
+                                    <i class="fa fa-upload"></i> Import
+                                </button>
+                                <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Auto Backup</label>
+                                    <p>Automatically backup your data daily</p>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-backup" checked onchange="saveSettings()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item danger">
+                                <div class="setting-info">
+                                    <label>Clear All Data</label>
+                                    <p>Permanently delete all trackers</p>
+                                </div>
+                                <button class="btn-danger" onclick="clearAllData()">
+                                    <i class="fa fa-trash"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-plug"></i> Integrations</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Browser Extension</label>
+                                    <p>Add price tracking directly to browser</p>
+                                </div>
+                                <button class="btn-secondary small" onclick="window.open('/browser-extension', '_blank')">
+                                    <i class="fa fa-external-link"></i> Install
+                                </button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Chrome Web Store</label>
+                                    <p>Get the Chrome extension</p>
+                                </div>
+                                <button class="btn-secondary small">
+                                    <i class="fa fa-chrome"></i> Get
+                                </button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>API Access</label>
+                                    <p>Use API for custom integrations</p>
+                                </div>
+                                <button class="btn-secondary small" onclick="showApiKey()">
+                                    <i class="fa fa-key"></i> View API
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-globe"></i> Region</h3>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Display Currency</label>
+                                    <p>Default currency for prices</p>
+                                </div>
+                                <select id="currency-select" onchange="saveCurrencyPreference()">
+                                    <option value="INR ₹">INR (₹) - Indian Rupee</option>
+                                    <option value="USD $">USD ($) - US Dollar</option>
+                                    <option value="EUR €">EUR (€) - Euro</option>
+                                    <option value="GBP £">GBP (£) - British Pound</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Site Preference</label>
+                                    <p>Default shopping site</p>
+                                </div>
+                                <select id="site-preference" onchange="saveSettings()">
+                                    <option value="amazon">Amazon</option>
+                                    <option value="flipkart">Flipkart</option>
+                                    <option value="myntra">Myntra</option>
+                                    <option value="ajio">Ajio</option>
+                                    <option value="meesho">Meesho</option>
+                                    <option value="snapdeal">Snapdeal</option>
+                                    <option value="tatacliq">Tata CLiQ</option>
+                                    <option value="reliancedigital">Reliance Digital</option>
+                                    <option value="ebay">eBay</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-question-circle"></i> Help & Support</h3>
+                            <div class="help-links">
+                                <a href="/about" class="help-link">
+                                    <i class="fa fa-info-circle"></i> About Us
+                                </a>
+                                <a href="/contact" class="help-link">
+                                    <i class="fa fa-envelope"></i> Contact Support
+                                </a>
+                                <a href="/blog" class="help-link">
+                                    <i class="fa fa-blog"></i> Blog & Guides
+                                </a>
+                                <a href="/privacy" class="help-link">
+                                    <i class="fa fa-shield"></i> Privacy Policy
+                                </a>
+                                <a href="/terms" class="help-link">
+                                    <i class="fa fa-file-text"></i> Terms of Service
+                                </a>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>Send Feedback</label>
+                                    <p>Help us improve the app</p>
+                                </div>
+                                <button class="btn-secondary small" onclick="showFeedbackModal()">
+                                    <i class="fa fa-comment"></i> Feedback
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fa fa-info-circle"></i> About</h3>
+                            <div class="about-info">
+                                <div class="about-logo">
+                                    <i class="fa fa-bell"></i>
+                                </div>
+                                <p><strong>AI Price Alert v2.0</strong></p>
+                                <p>Smart price tracking assistant</p>
+                                <p class="version">Version 2.0.0</p>
+                                <div class="social-links">
+                                    <a href="#" title="GitHub"><i class="fa fa-github"></i></a>
+                                    <a href="#" title="Twitter"><i class="fa fa-twitter"></i></a>
+                                    <a href="#" title="Email"><i class="fa fa-envelope"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast">
+            <div class="toast-icon success">
+                <i class="fa fa-check"></i>
+            </div>
+            <div class="toast-content">
+                <strong id="toast-title">Success!</strong>
+                <span id="toastMsg">Operation completed successfully</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+    <script src="/static/ads.js"></script>
+</body>
+</html>
+

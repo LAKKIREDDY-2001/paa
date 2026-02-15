@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error - AI Price Alert</title>
+    <link rel="stylesheet" href="/static/auth.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+</head>
+<body>
+    <div class="scene">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid"></div>
+    </div>
+    <div class="auth-container tilt-root" data-tilt="6">
+        <div class="auth-card" style="max-width: 500px;">
+            <div class="auth-header">
+                <div class="logo">
+                    <i class="fa fa-bell" style="color: #ff5f56;"></i>
+                    <span>AI Price Alert</span>
+                </div>
+            </div>
+            
+            <div style="text-align: center; padding: 20px 0;">
+                <i class="fa fa-exclamation-triangle" style="font-size: 64px; color: #ff5f56; margin-bottom: 20px;"></i>
+                <h2 style="margin-bottom: 12px; color: #ff5f56;">Something went wrong</h2>
+                <p style="color: #666; margin-bottom: 24px;">{{ error }}</p>
+                
+                <div style="background: #fff3e0; padding: 16px; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid #ff9f0a;">
+                    <p style="font-size: 14px; color: #666; margin: 0;">
+                        <i class="fa fa-lightbulb" style="color: #ff9f0a;"></i>
+                        The reset link may have expired or already been used. 
+                        Request a new password reset from the login page.
+                    </p>
+                </div>
+                
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <a href="/login" class="auth-btn" style="display: inline-block; text-decoration: none;">
+                        <i class="fa fa-sign-in"></i> Back to Login
+                    </a>
+                    <a href="/forgot-password" class="auth-btn" style="display: inline-block; text-decoration: none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fa fa-refresh"></i> Request New Link
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

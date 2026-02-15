@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - AI Price Alert | Never Miss a Price Drop</title>
+
+    <meta name="description" content="Create your free account on AI Price Alert. Start tracking product prices across Amazon, Flipkart, Myntra and 100+ stores. Never miss a price drop again!">
+    <meta name="keywords" content="price tracker, price alert, sign up, register, amazon price tracker, flipkart price tracker, myntra price alert, save money shopping">
+    <meta property="og:title" content="Sign Up - AI Price Alert | Never Miss a Price Drop">
+    <meta property="og:description" content="Create your free account and start tracking prices across 100+ stores. Save money on every purchase!">
+    <meta property="og:image" content="https://aipricealert.com/static/og-image.png">
+    <meta property="og:url" content="https://aipricealert.com/signup">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sign Up - AI Price Alert">
+    <meta name="twitter:description" content="Never miss a price drop again! Track prices across 100+ stores.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔔</text></svg>">
+    <link rel="canonical" href="https://aipricealert.com/signup">
+    <link rel="stylesheet" href="/static/auth.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+</head>
+<body>
+    <div class="scene">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid"></div>
+    </div>
+    <div class="auth-container tilt-root" data-tilt="7">
+        <!-- Top Banner Ad -->
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">
+                    <i class="fa fa-bell"></i>
+                    <span>AI Price Alert</span>
+                </div>
+                <h1>Create Account</h1>
+                <p>Start tracking prices and save money</p>
+            </div>
+
+            <!-- Step 1: Basic Info -->
+            <form id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="username"><i class="fa fa-user"></i> Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email"><i class="fa fa-envelope"></i> Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone"><i class="fa fa-phone"></i> Phone (Optional)</label>
+                    <input type="tel" id="phone" name="phone" placeholder="Enter your phone number">
+                </div>
+
+                <div class="form-group">
+                    <label for="password"><i class="fa fa-lock"></i> Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password"><i class="fa fa-lock"></i> Confirm Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="terms" required>
+                        <span>I agree to the <a href="#">Terms & Conditions</a></span>
+                    </label>
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    <span>Continue to Verification</span>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+
+                <div id="error-message" class="error-message" style="display: none;"></div>
+            </form>
+
+            <!-- Step 2: OTP Verification -->
+            <div id="verification-section" class="verification-section" style="display: none;">
+                <h2><i class="fa fa-shield"></i> Verify Your Account</h2>
+                <p class="verification-info">Enter the OTP sent to your email and phone to complete registration</p>
+                
+                <div class="verification-methods">
+                    <!-- Email OTP -->
+                    <div class="verification-method" id="email-verification">
+                        <div class="method-header">
+                            <i class="fa fa-envelope"></i>
+                            <span>Email Verification</span>
+                            <span class="verification-status" id="email-status">Pending</span>
+                        </div>
+                        <div class="method-content">
+                            <p id="email-address">Send OTP to: <span class="target"></span></p>
+                            <div class="otp-input-group">
+                                <input type="text" id="email-otp" placeholder="Enter 6-digit OTP" maxlength="6">
+                                <button type="button" class="otp-btn" id="send-email-otp">
+                                    <i class="fa fa-paper-plane"></i> Send OTP
+                                </button>
+                            </div>
+                            <button type="button" class="verify-btn" id="verify-email-otp">
+                                <i class="fa fa-check"></i> Verify Email
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Phone OTP -->
+                    <div class="verification-method" id="phone-verification" style="display: none;">
+                        <div class="method-header">
+                            <i class="fa fa-phone"></i>
+                            <span>Phone Verification</span>
+                            <span class="verification-status" id="phone-status">Pending</span>
+                        </div>
+                        <div class="method-content">
+                            <p id="phone-number">Send OTP to: <span class="target"></span></p>
+                            <div class="otp-input-group">
+                                <input type="text" id="phone-otp" placeholder="Enter 6-digit OTP" maxlength="6">
+                                <button type="button" class="otp-btn" id="send-phone-otp">
+                                    <i class="fa fa-paper-plane"></i> Send OTP
+                                </button>
+                            </div>
+                            <button type="button" class="verify-btn" id="verify-phone-otp">
+                                <i class="fa fa-check"></i> Verify Phone
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="verification-progress">
+                    <div class="progress-step active" id="step-1">
+                        <span class="step-number">1</span>
+                        <span class="step-label">Account Info</span>
+                    </div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step" id="step-2">
+                        <span class="step-number">2</span>
+                        <span class="step-label">Verify</span>
+                    </div>
+                    <div class="progress-line"></div>
+                    <div class="progress-step" id="step-3">
+                        <span class="step-number">3</span>
+                        <span class="step-label">Complete</span>
+                    </div>
+                </div>
+
+                <button type="button" class="auth-btn" id="complete-signup" disabled>
+                    <span>Complete Registration</span>
+                    <i class="fa fa-check"></i>
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="/login">Sign In</a></p>
+            </div>
+
+            <div class="divider">
+                <span>Trusted by thousands</span>
+            </div>
+
+            <div class="auth-features">
+                <div class="features-list">
+                    <div class="feature">
+                        <i class="fa fa-bell"></i>
+                        <div>
+                            <h4>Real-time Alerts</h4>
+                            <p>Get notified when prices drop</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <i class="fa fa-chart-line"></i>
+                        <div>
+                            <h4>Price History</h4>
+                            <p>Track price trends over time</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- AdSense Ad Container -->
+            <div class="ad-container" data-ad-slot="signupPage" style="margin-top: 20px;">
+                <div class="ad-placeholder">
+                    <div class="ad-placeholder-content">
+                        <span class="ad-label">Advertisement</span>
+                        <div class="ad-placeholder-box">
+                            <i class="fa fa-ad"></i>
+                            <span>Your Ad Here</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Banner Ad -->
+        <div class="auth-features">
+            <h2>Smart Price Tracking</h2>
+            <div class="features-list">
+                <div class="feature">
+                    <i class="fa fa-bell"></i>
+                    <div>
+                        <h4>Real-time Alerts</h4>
+                        <p>Get notified instantly when prices drop</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fa fa-chart-line"></i>
+                    <div>
+                        <h4>Price History</h4>
+                        <p>Track price trends over time</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fa fa-globe"></i>
+                    <div>
+                        <h4>Multi-Store</h4>
+                        <p>Compare prices across Amazon, Flipkart & more</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/auth.js"></script>
+    <script src="/static/ads.js"></script>
+</body>
+</html>
