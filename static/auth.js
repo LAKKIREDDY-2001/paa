@@ -47,12 +47,22 @@ function initTilt() {
     const tiltRoots = document.querySelectorAll('.tilt-root');
     if (!tiltRoots.length) return;
     if (window.matchMedia('(hover: none)').matches) return;
+    const interactiveSelector = 'button, a, input, textarea, select, label';
 
     tiltRoots.forEach((root) => {
         let rect = null;
         const maxTilt = parseFloat(root.dataset.tilt || '7');
 
         const handleMove = (event) => {
+            const target = event.target;
+            if (target && target.closest(interactiveSelector)) {
+                root.classList.remove('tilt-active');
+                root.style.setProperty('--tilt-x', '0deg');
+                root.style.setProperty('--tilt-y', '0deg');
+                rect = null;
+                return;
+            }
+
             if (!rect) rect = root.getBoundingClientRect();
             const x = (event.clientX - rect.left) / rect.width;
             const y = (event.clientY - rect.top) / rect.height;
