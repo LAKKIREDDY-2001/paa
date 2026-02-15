@@ -822,6 +822,41 @@ def get_price():
 def serve_static(filename):
     return send_from_directory('static', filename, max_age=0)
 
+# Catch-all route for SPA-style routing
+# This ensures that any route that doesn't match API or static serves the appropriate page
+@app.route('/<path:path>')
+def catch_all(path):
+    # Don't intercept API routes or static files
+    if path.startswith('api/') or path.startswith('static/') or path == 'favicon.ico':
+        return "Not Found", 404
+    
+    # For dashboard, check if user is logged in
+    if path == 'dashboard' or path.startswith('dashboard/'):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return render_template('index.html')
+    
+    # For known routes, render the appropriate template
+    known_routes = {
+        'home': 'home.html',
+        'about': 'about.html',
+        'contact': 'contact.html',
+        'privacy': 'privacy.html',
+        'terms': 'terms.html',
+        'blog': 'blog.html',
+        'signup': 'signup.html',
+        'login': 'login.html',
+        'forgot-password': 'forgot-password.html',
+    }
+    
+    # Check if it's a known route
+    for route, template in known_routes.items():
+        if path == route or path.startswith(route + '/'):
+            return render_template(template)
+    
+    # Default to home page for unknown routes
+    return render_template('home.html')
+
 @app.after_request
 def add_no_cache_headers(response):
     if response.content_type and response.content_type.startswith('text/html'):
