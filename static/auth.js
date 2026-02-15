@@ -7,59 +7,67 @@ let signupSubmitting = false;
 let loginSubmitting = false;
 
 // Backend API configuration
-// For local development: use empty string or 'http://localhost:8081'
-// For production/preview: set to your deployed backend URL
-// Auto-detect from current page to avoid CORS issues
 const getApiBaseUrl = () => {
     return window.location.origin;
 };
 const API_BASE_URL = getApiBaseUrl();
 
+// Global form submission interceptor - prevent any form from submitting normally
 document.addEventListener('DOMContentLoaded', () => {
+    // Prevent ALL form submissions and handle via AJAX
+    document.addEventListener('submit', (e) => {
+        // Only handle forms that have our handlers
+        const formId = e.target.id;
+        if (formId === 'signup-form' || formId === 'login-form' || 
+            formId === 'forgot-password-form' || formId === 'reset-password-form' ||
+            formId === 'forgot-form') {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
+    }, true); // Use capture phase to catch it first
+    
+    // Also prevent default on button clicks for forms
+    document.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON' && e.target.type === 'submit') {
+            const form = e.target.closest('form');
+            if (form && (form.id === 'signup-form' || form.id === 'login-form' || 
+                form.id === 'forgot-password-form' || form.id === 'reset-password-form' ||
+                form.id === 'forgot-form')) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }, true);
+
     const signupForm = document.getElementById('signup-form');
     const loginForm = document.getElementById('login-form');
     const forgotPasswordForm = document.getElementById('forgot-password-form');
     const resetPasswordForm = document.getElementById('reset-password-form');
-    const forgotForm = document.getElementById('forgot-form'); // Legacy ID support
+    const forgotForm = document.getElementById('forgot-form');
 
     if (signupForm) {
-        signupForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleSignup(e);
-        });
+        console.log('Signup form found, attaching handler');
+        signupForm.addEventListener('submit', handleSignup);
+    } else {
+        console.log('Signup form NOT found');
     }
 
     if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleLogin(e);
-        });
+        console.log('Login form found, attaching handler');
+        loginForm.addEventListener('submit', handleLogin);
+    } else {
+        console.log('Login form NOT found');
     }
 
-    // Handle forgot password - check both IDs for compatibility
     if (forgotPasswordForm) {
-        forgotPasswordForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleForgotPassword(e);
-        });
+        forgotPasswordForm.addEventListener('submit', handleForgotPassword);
     } else if (forgotForm) {
-        // Legacy support for forgot-form ID
-        forgotForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleForgotPassword(e);
-        });
+        forgotForm.addEventListener('submit', handleForgotPassword);
     }
 
     if (resetPasswordForm) {
-        resetPasswordForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleResetPassword(e);
-        });
+        resetPasswordForm.addEventListener('submit', handleResetPassword);
     }
 
     initTilt();
@@ -90,7 +98,11 @@ function initTilt() {
 // ==================== SIGNUP FUNCTIONS ====================
 
 async function handleSignup(e) {
-    e.preventDefault();
+    // Always prevent default
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     if (signupSubmitting) return;
     
     const username = document.getElementById('username')?.value;
@@ -99,7 +111,9 @@ async function handleSignup(e) {
     const password = document.getElementById('password')?.value;
     const confirmPassword = document.getElementById('confirm_password')?.value;
     const errorMessage = document.getElementById('error-message');
-    const submitBtn = e.target?.querySelector('button[type="submit"]');
+    const submitBtn = e?.target?.querySelector('button[type="submit"]');
+    
+    console.log('handleSignup called', { username, email, submitBtn });
     
     // Validate required fields
     if (!username || !email || !password || !confirmPassword) {
@@ -586,10 +600,14 @@ function updateProgress(step) {
 // ==================== LOGIN FUNCTIONS ====================
 
 async function handleLogin(e) {
-    e.preventDefault();
+    // Always prevent default
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     if (loginSubmitting) return;
     
-    // Get email and password
+    console.log('handleLogin called');
     const emailInput = document.getElementById('login-email') || document.getElementById('email');
     const email = emailInput?.value;
     const passwordInput = document.getElementById('login-password') || document.getElementById('password');
