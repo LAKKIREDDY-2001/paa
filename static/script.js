@@ -1041,7 +1041,7 @@ function showApiKey() {
                     </button>
                 </div>
                 <p class="api-docs-link">
-                    <a href="#" target="_blank">View API Documentation</a>
+                    <a href="/contact">View API Documentation</a>
                 </p>
             </div>
         </div>
