@@ -14,10 +14,19 @@ const API_BASE_URL = getApiBaseUrl();
 
 // Global form submission interceptor - prevent any form from submitting normally
 document.addEventListener('DOMContentLoaded', () => {
-    // Prevent ALL form submissions and handle via AJAX
+    console.log('Auth JS loading...');
+    
+    // Get all forms and buttons
+    const signupForm = document.getElementById('signup-form');
+    const loginForm = document.getElementById('login-form');
+    const forgotPasswordForm = document.getElementById('forgot-password-form');
+    const resetPasswordForm = document.getElementById('reset-password-form');
+    const forgotForm = document.getElementById('forgot-form');
+
+    // Prevent ALL form submissions
     document.addEventListener('submit', (e) => {
-        // Only handle forms that have our handlers
         const formId = e.target.id;
+        console.log('Form submit intercepted:', formId);
         if (formId === 'signup-form' || formId === 'login-form' || 
             formId === 'forgot-password-form' || formId === 'reset-password-form' ||
             formId === 'forgot-form') {
@@ -25,9 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             return false;
         }
-    }, true); // Use capture phase to catch it first
+    }, true);
     
-    // Also prevent default on button clicks for forms
+    // Prevent default on submit buttons
     document.addEventListener('click', (e) => {
         if (e.target.tagName === 'BUTTON' && e.target.type === 'submit') {
             const form = e.target.closest('form');
@@ -40,24 +49,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, true);
 
-    const signupForm = document.getElementById('signup-form');
-    const loginForm = document.getElementById('login-form');
-    const forgotPasswordForm = document.getElementById('forgot-password-form');
-    const resetPasswordForm = document.getElementById('reset-password-form');
-    const forgotForm = document.getElementById('forgot-form');
-
+    // DIRECT onclick handlers on buttons - most reliable method
     if (signupForm) {
-        console.log('Signup form found, attaching handler');
+        console.log('Signup form found');
+        const signupBtn = signupForm.querySelector('button[type="submit"]');
+        if (signupBtn) {
+            console.log('Signup button found, adding onclick');
+            signupBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSignup(e);
+                return false;
+            };
+        }
         signupForm.addEventListener('submit', handleSignup);
-    } else {
-        console.log('Signup form NOT found');
     }
 
     if (loginForm) {
-        console.log('Login form found, attaching handler');
+        console.log('Login form found');
+        const loginBtn = loginForm.querySelector('button[type="submit"]');
+        if (loginBtn) {
+            console.log('Login button found, adding onclick');
+            loginBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLogin(e);
+                return false;
+            };
+        }
         loginForm.addEventListener('submit', handleLogin);
-    } else {
-        console.log('Login form NOT found');
     }
 
     if (forgotPasswordForm) {
@@ -71,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initTilt();
+    console.log('Auth JS initialized');
 });
 
 function initTilt() {
