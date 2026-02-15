@@ -1,5 +1,32 @@
 // Auth JavaScript - Handles Signup, Login, and Password Reset
 
+// CRITICAL: Override window.open to prevent about:blank
+const originalWindowOpen = window.open;
+window.open = function(url, target, features) {
+    console.log('window.open called:', url, target);
+    // Prevent about:blank
+    if (!url || url === '' || url === 'about:blank' || url === 'null' || url === 'undefined') {
+        console.error('Blocked window.open with invalid URL:', url);
+        return null;
+    }
+    return originalWindowOpen.call(window, url, target, features);
+};
+
+// Also override location.href assignments
+const originalLocationHref = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
+if (originalLocationHref) {
+    const originalSet = originalLocationHref.set;
+    Object.defineProperty(window.Location.prototype, 'href', {
+        set: function(value) {
+            console.log('Setting location.href:', value);
+            if (value && value !== 'about:blank') {
+                originalSet.call(this, value);
+            }
+        },
+        get: originalLocationHref.get
+    });
+}
+
 let signupToken = null;
 let emailVerified = false;
 let phoneVerified = false;
