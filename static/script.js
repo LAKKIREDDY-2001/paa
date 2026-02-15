@@ -6,11 +6,7 @@ let celebrationTracker = null;
 
 // Backend API configuration
 const getApiBaseUrl = () => {
-    const currentUrl = window.location.origin;
-    if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
-        return currentUrl;
-    }
-    return 'http://localhost:8081';
+    return window.location.origin;
 };
 const API_BASE_URL = getApiBaseUrl();
 

@@ -260,13 +260,13 @@ def init_db():
 
 @app.route('/')
 def root():
-    """Default entry route to dashboard"""
-    return render_template('index.html')
+    """Home page with SEO content"""
+    return render_template('home.html')
 
 @app.route('/home')
 def home():
-    """Alias route to dashboard"""
-    return render_template('index.html')
+    """Home page alias"""
+    return render_template('home.html')
 
 @app.route('/about')
 def about():
@@ -494,13 +494,15 @@ def login():
 
 @app.route('/dashboard')
 def dashboard():
-    """Dashboard page"""
+    """Dashboard - requires login"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     return render_template('index.html')
 
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
-    return redirect(url_for('root'))
+    return redirect(url_for('home'))
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():

@@ -9,13 +9,7 @@ let phoneVerified = false;
 // For production/preview: set to your deployed backend URL
 // Auto-detect from current page to avoid CORS issues
 const getApiBaseUrl = () => {
-    const currentUrl = window.location.origin;
-    // Use current page origin if on localhost/127.0.0.1
-    if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
-        return currentUrl;
-    }
-    // For network IP access, use localhost:8081 as fallback
-    return 'http://localhost:8081';
+    return window.location.origin;
 };
 const API_BASE_URL = getApiBaseUrl();
 
