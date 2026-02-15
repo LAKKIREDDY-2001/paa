@@ -748,6 +748,61 @@ def api_reset_password():
     
     return jsonify({"success": True, "message": "Password reset successful"}), 200
 
+@app.route('/api/check-email', methods=['POST'])
+def api_check_email():
+    """API endpoint to check if email exists in the system"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid request"}), 400
+    
+    email = data.get('email')
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return jsonify({"exists": True, "email": email}), 200
+    else:
+        return jsonify({"exists": False, "email": email}), 200
+
+@app.route('/api/direct-reset-password', methods=['POST'])
+def api_direct_reset_password():
+    """API endpoint for direct password reset without token"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid request"}), 400
+    
+    email = data.get('email')
+    password = data.get('password')
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    
+    if not password or len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+    
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+    
+    if not user:
+        conn.close()
+        return jsonify({"error": "User not found"}), 404
+    
+    user_id = user[0]
+    hashed = generate_password_hash(password)
+    cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, user_id))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True, "message": "Password reset successful"}), 200
+
 # ==================== PRICE TRACKING ====================
 
 def parse_price(price_str):

@@ -767,7 +767,6 @@ async function handleForgotPassword(e) {
                        document.querySelector('input[name="email"]');
     const email = emailInput?.value;
     const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
     const submitBtn = e.target?.querySelector('button[type="submit"]');
 
     if (!email) {
@@ -785,17 +784,15 @@ async function handleForgotPassword(e) {
     // Show loading state
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending...';
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Verifying...';
     }
     if (errorMessage) {
         errorMessage.style.display = 'none';
     }
-    if (successMessage) {
-        successMessage.style.display = 'none';
-    }
 
     try {
-        const response = await fetch(API_BASE_URL + '/api/forgot-password', {
+        // First verify the email exists in our system
+        const checkResponse = await fetch(API_BASE_URL + '/api/check-email', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -803,40 +800,133 @@ async function handleForgotPassword(e) {
             body: JSON.stringify({ email })
         });
 
-        const data = await response.json();
+        const checkData = await checkResponse.json();
 
-        if (response.ok) {
-            // Show success message inline (works on all pages)
-            const authForm = document.querySelector('.auth-form');
-            if (authForm) {
-                authForm.innerHTML = `
-                    <div style="text-align: center; padding: 20px 0;">
-                        <i class="fa fa-check-circle" style="font-size: 64px; color: #4caf50; margin-bottom: 20px;"></i>
-                        <h2 style="margin-bottom: 12px;">Check your email</h2>
-                        <p style="color: #666; margin-bottom: 24px;">We've sent password reset instructions to ${email}</p>
-                        <p style="color: #888; font-size: 13px; margin-bottom: 24px;">Click the link in the email to reset your password. The link expires in 30 minutes.</p>
-                        <a href="/login" class="auth-btn" style="display: inline-block; text-decoration: none;">
-                            <i class="fa fa-arrow-left"></i> Back to Login
-                        </a>
-                    </div>
-                `;
-            }
-
-            // Also show toast notification
-            showToast('success', 'Password reset instructions sent!');
-        } else {
-            showError(data.error || 'Failed to send reset link', errorMessage?.id || 'error-message');
+        if (!checkResponse.ok || !checkData.exists) {
+            showError('No account found with this email address', errorMessage?.id || 'error-message');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fa fa-paper-plane"></i> Send Reset Link';
             }
+            return;
         }
+
+        // Email exists - directly show password reset form inline
+        const authForm = document.querySelector('.auth-form');
+        if (authForm) {
+            authForm.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <i class="fa fa-lock" style="font-size: 48px; color: #667eea; margin-bottom: 16px;"></i>
+                    <h2 style="margin-bottom: 8px;">Reset Your Password</h2>
+                    <p style="color: #666; font-size: 14px;">Enter a new password for ${email}</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="new-password"><i class="fa fa-lock"></i> New Password</label>
+                    <input type="password" id="new-password" placeholder="Enter new password" required minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm-password"><i class="fa fa-lock"></i> Confirm Password</label>
+                    <input type="password" id="confirm-password" placeholder="Confirm new password" required>
+                </div>
+                
+                <div id="reset-error-message" class="error-message" style="display: none;"></div>
+                
+                <button type="button" class="auth-btn" id="reset-password-btn" onclick="handleDirectPasswordReset('${email}')">
+                    <i class="fa fa-key"></i> Reset Password
+                </button>
+                
+                <div style="text-align: center; margin-top: 16px;">
+                    <a href="/login" style="color: #667eea; text-decoration: none; font-size: 14px;">
+                        <i class="fa fa-arrow-left"></i> Back to Login
+                    </a>
+                </div>
+            `;
+        }
+
+        showToast('success', 'Email verified! Please enter your new password.');
     } catch (error) {
         console.error('Forgot password error:', error);
         showError('An error occurred. Please try again.', errorMessage?.id || 'error-message');
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fa fa-paper-plane"></i> Send Reset Link';
+        }
+    }
+}
+
+// Direct password reset without email - shows form inline
+async function handleDirectPasswordReset(email) {
+    const newPassword = document.getElementById('new-password')?.value;
+    const confirmPassword = document.getElementById('confirm-password')?.value;
+    const errorMessage = document.getElementById('reset-error-message');
+    const submitBtn = document.getElementById('reset-password-btn');
+
+    if (!newPassword || !confirmPassword) {
+        showError('Please enter both password fields', 'reset-error-message');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showError('Passwords do not match', 'reset-error-message');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        showError('Password must be at least 6 characters', 'reset-error-message');
+        return;
+    }
+
+    // Show loading state
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Resetting...';
+    }
+    if (errorMessage) {
+        errorMessage.style.display = 'none';
+    }
+
+    try {
+        const response = await fetch(API_BASE_URL + '/api/direct-reset-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password: newPassword })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Show success message
+            const authForm = document.querySelector('.auth-form');
+            if (authForm) {
+                authForm.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <i class="fa fa-check-circle" style="font-size: 64px; color: #4caf50; margin-bottom: 20px;"></i>
+                        <h2 style="margin-bottom: 12px;">Password Reset Successful!</h2>
+                        <p style="color: #666; margin-bottom: 24px;">Your password has been changed successfully.</p>
+                        <a href="/login" class="auth-btn" style="display: inline-block; text-decoration: none;">
+                            <i class="fa fa-sign-in"></i> Sign In with New Password
+                        </a>
+                    </div>
+                `;
+            }
+            showToast('success', 'Password reset successful!');
+        } else {
+            showError(data.error || 'Failed to reset password', 'reset-error-message');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fa fa-key"></i> Reset Password';
+            }
+        }
+    } catch (error) {
+        console.error('Direct password reset error:', error);
+        showError('An error occurred. Please try again.', 'reset-error-message');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa fa-key"></i> Reset Password';
         }
     }
 }
