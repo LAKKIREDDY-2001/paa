@@ -896,11 +896,12 @@ loadSettings();
 
 let autoRefreshInterval = null;
 let lastRefreshTime = null;
+let autoRefreshInProgress = false;
 
 function startAutoRefresh() {
     const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-    const intervalMinutes = parseInt(settings.refreshInterval || '15');
-    const intervalMs = intervalMinutes * 60 * 1000;
+    const intervalSeconds = parseInt(settings.refreshInterval || '5');
+    const intervalMs = intervalSeconds * 1000;
     
     // Clear any existing interval
     if (autoRefreshInterval) {
@@ -913,8 +914,8 @@ function startAutoRefresh() {
     }, intervalMs);
     
     // Update UI to show auto-refresh is active
-    updateAutoRefreshUI(intervalMinutes);
-    console.log(`Auto-refresh started: every ${intervalMinutes} minutes`);
+    updateAutoRefreshUI(intervalSeconds);
+    console.log(`Auto-refresh started: every ${intervalSeconds} seconds`);
 }
 
 function stopAutoRefresh() {
@@ -926,52 +927,57 @@ function stopAutoRefresh() {
 }
 
 async function autoRefreshAllPrices() {
-    if (trackers.length === 0) return;
+    if (trackers.length === 0 || autoRefreshInProgress) return;
+    autoRefreshInProgress = true;
     
     console.log('Auto-refreshing all prices...');
     lastRefreshTime = new Date();
     
     let updatedCount = 0;
-    for (const tracker of trackers) {
-        try {
-            const response = await fetch(API_BASE_URL + '/get-price', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: tracker.url })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                const oldPrice = tracker.currentPrice;
-                tracker.currentPrice = data.price;
-                tracker.productName = data.productName || tracker.productName;
+    try {
+        for (const tracker of trackers) {
+            try {
+                const response = await fetch(API_BASE_URL + '/get-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: tracker.url })
+                });
                 
-                // Check if target just reached
-                if (checkPriceReached(tracker) && oldPrice > tracker.targetPrice) {
-                    celebrationTracker = tracker;
-                    showCelebration(tracker);
+                if (response.ok) {
+                    const data = await response.json();
+                    const oldPrice = tracker.currentPrice;
+                    tracker.currentPrice = data.price;
+                    tracker.productName = data.productName || tracker.productName;
+                    
+                    // Check if target just reached
+                    if (checkPriceReached(tracker) && oldPrice > tracker.targetPrice) {
+                        celebrationTracker = tracker;
+                        showCelebration(tracker);
+                    }
+                    updatedCount++;
                 }
-                updatedCount++;
+            } catch (error) {
+                console.error(`Failed to refresh price for ${tracker.url}:`, error);
             }
-        } catch (error) {
-            console.error(`Failed to refresh price for ${tracker.url}:`, error);
         }
-    }
-    
-    // Save updated trackers
-    localStorage.setItem('trackers', JSON.stringify(trackers));
-    
-    // Update UI
-    renderTrackers();
-    updateStats();
-    
-    // Show notification
-    if (updatedCount > 0) {
-        showToast('success', `Auto-refreshed ${updatedCount} tracker(s)`);
+        
+        // Save updated trackers
+        localStorage.setItem('trackers', JSON.stringify(trackers));
+        
+        // Update UI
+        renderTrackers();
+        updateStats();
+        
+        // Show notification
+        if (updatedCount > 0) {
+            showToast('success', `Auto-refreshed ${updatedCount} tracker(s)`);
+        }
+    } finally {
+        autoRefreshInProgress = false;
     }
 }
 
-function updateAutoRefreshUI(intervalMinutes) {
+function updateAutoRefreshUI(intervalSeconds) {
     // Add auto-refresh indicator to the sidebar
     const sidebarStats = document.querySelector('.sidebar-stats');
     if (sidebarStats) {
@@ -991,7 +997,7 @@ function updateAutoRefreshUI(intervalMinutes) {
     // Update refresh timer display
     const refreshTimer = document.getElementById('refresh-timer');
     if (refreshTimer) {
-        let secondsRemaining = intervalMinutes * 60;
+        let secondsRemaining = intervalSeconds;
         refreshTimer.innerHTML = `<i class="fa fa-sync fa-spin"></i> ${formatTime(secondsRemaining)}`;
         
         // Update timer every second
@@ -1001,7 +1007,7 @@ function updateAutoRefreshUI(intervalMinutes) {
         window.refreshTimerInterval = setInterval(() => {
             secondsRemaining--;
             if (secondsRemaining <= 0) {
-                secondsRemaining = intervalMinutes * 60;
+                secondsRemaining = intervalSeconds;
             }
             const timerEl = document.getElementById('refresh-timer');
             if (timerEl) {
