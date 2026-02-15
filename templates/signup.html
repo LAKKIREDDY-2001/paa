@@ -22,40 +22,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-<script>
-    // ULTRA EARLY window.open override - must be before any other scripts
-    (function() {
-        const originalWindowOpen = window.open;
-        window.open = function(url, target, features) {
-            console.log('Intercepted window.open:', url, target);
-            // Block any empty/null/undefined URLs to prevent about:blank
-            if (!url || url === '' || url === 'about:blank' || url === 'null' || url === 'undefined') {
-                console.error('BLOCKED window.open with invalid URL:', url);
-                return null;
-            }
-            return originalWindowOpen.call(window, url, target, features);
-        };
-        // Also protect location.href
-        const originalLocation = window.Location;
-        if (originalLocation) {
-            const hrefDescriptor = Object.getOwnPropertyDescriptor(originalLocation.prototype, 'href');
-            if (hrefDescriptor) {
-                const originalSet = hrefDescriptor.set;
-                Object.defineProperty(originalLocation.prototype, 'href', {
-                    set: function(value) {
-                        if (value && value !== 'about:blank' && value !== '' && value !== 'null' && value !== 'undefined') {
-                            originalSet.call(this, value);
-                        } else {
-                            console.error('BLOCKED location.href with:', value);
-                        }
-                    },
-                    get: hrefDescriptor.get
-                });
-            }
-        }
-    })();
-    </script>
 </head>
 <body>
     <div class="scene">
