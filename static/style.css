@@ -141,20 +141,21 @@ body {
 }
 
 /* ============================================
-   3D TILT EFFECT
+   3D TILT EFFECT - DISABLED TO PREVENT CURSOR FLICKER
    ============================================ */
 
 .tilt-root {
     position: relative;
     z-index: 1;
-    transform-style: preserve-3d;
-    transform: perspective(1200px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
-    transition: transform 220ms ease;
-    will-change: transform;
+    /* Tilt effect disabled - was causing cursor flicker on clickable elements */
+    transform: none !important;
+    transition: none !important;
+    perspective: none !important;
 }
 
 .tilt-root.tilt-active {
-    transition: transform 40ms linear;
+    /* Disabled - no transition on transform */
+    transition: none !important;
 }
 
 /* ============================================
@@ -2055,4 +2056,265 @@ input:checked + .slider:before {
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   CELEBRATION MODAL STYLES
+   ============================================ */
+
+.celebration-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.celebration-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.celebration-content {
+    background: linear-gradient(160deg, #ffffff 0%, #f8f9fa 100%);
+    border-radius: 24px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    position: relative;
+    animation: celebrationPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes celebrationPopIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.celebration-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #f0f0f0;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    color: #666;
+    transition: all 0.2s ease;
+}
+
+.celebration-close:hover {
+    background: #ff5f56;
+    color: white;
+}
+
+.celebration-main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.trophy-container {
+    margin-bottom: 20px;
+}
+
+.trophy-3d {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+}
+
+.trophy-star {
+    position: absolute;
+    font-size: 24px;
+    animation: starFloat 2s ease-in-out infinite;
+}
+
+.trophy-star-1 {
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0s;
+}
+
+.trophy-star-2 {
+    top: 10px;
+    left: -10px;
+    animation-delay: 0.3s;
+}
+
+.trophy-star-3 {
+    top: 10px;
+    right: -10px;
+    animation-delay: 0.6s;
+}
+
+@keyframes starFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-10px) scale(1.1); }
+}
+
+.trophy-cup {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px auto;
+    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+}
+
+.trophy-cup-inner {
+    font-size: 40px;
+}
+
+.trophy-ribbon {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.celebration-title {
+    font-size: 1.8rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.title-word {
+    display: inline-block;
+}
+
+.title-word.highlight {
+    color: #ff6b6b;
+    font-weight: 800;
+}
+
+.celebration-product {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 20px;
+    word-break: break-word;
+}
+
+.celebration-price {
+    margin-bottom: 24px;
+}
+
+.price-badge {
+    background: linear-gradient(135deg, #27c93f 0%, #2ecc71 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: inline-block;
+}
+
+.savings-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.savings-label {
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.savings-amount {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #27c93f;
+}
+
+.celebration-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.celebration-btn {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.celebration-btn.primary {
+    background: linear-gradient(135deg, #ff9f0a 0%, #ff7b00 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 159, 10, 0.4);
+}
+
+.celebration-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 159, 10, 0.5);
+}
+
+.celebration-btn.secondary {
+    background: white;
+    color: #333;
+    border: 2px solid #ddd;
+}
+
+.celebration-btn.secondary:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+/* Confetti Container */
+.confetti-container {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.confetti {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    top: -20px;
+    opacity: 0;
+    animation: confettiFall 3s ease-out forwards;
+}
+
+@keyframes confettiFall {
+    0% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(400px) rotate(720deg);
+    }
 }

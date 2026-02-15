@@ -101,13 +101,15 @@ h1, h2, h3 {
 }
 
 .tilt-root {
-    transform: perspective(1200px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
-    transition: transform 220ms ease;
-    will-change: transform;
+    /* Tilt effect disabled to prevent cursor flicker on clickable elements */
+    transform: none !important;
+    transition: none !important;
+    will-change: auto;
 }
 
 .tilt-root.tilt-active {
-    transition: transform 40ms linear;
+    /* Disabled - no transition on transform */
+    transition: none !important;
 }
 
 .auth-card {

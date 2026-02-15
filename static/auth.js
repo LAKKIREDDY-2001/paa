@@ -46,12 +46,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initTilt() {
-    // Disable tilt on auth pages to prevent cursor flicker on primary buttons.
+    // Completely disable tilt on auth pages to prevent cursor flicker on primary buttons.
+    // Remove any tilt-related event listeners and CSS transforms
     const tiltRoots = document.querySelectorAll('.tilt-root');
     tiltRoots.forEach((root) => {
+        // Remove tilt-active class
         root.classList.remove('tilt-active');
-        root.style.setProperty('--tilt-x', '0deg');
-        root.style.setProperty('--tilt-y', '0deg');
+        // Reset CSS custom properties
+        root.style.removeProperty('--tilt-x');
+        root.style.removeProperty('--tilt-y');
+        // Remove the transform that causes the cursor issue
+        root.style.transform = 'none';
+        root.style.perspective = 'none';
+    });
+    
+    // Remove any existing tilt mouse event listeners by cloning
+    document.querySelectorAll('.tilt-root').forEach(root => {
+        const newRoot = root.cloneNode(true);
+        root.parentNode.replaceChild(newRoot, root);
     });
 }
 

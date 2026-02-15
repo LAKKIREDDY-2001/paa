@@ -50,19 +50,27 @@ function openSafeUrl(url, newTab = true) {
     }
 
     const trimmed = url.trim();
-    if (!trimmed || trimmed === 'about:blank') {
+    
+    // Additional validation to prevent about:blank
+    if (!trimmed || trimmed === '' || trimmed === 'about:blank' || trimmed.length < 5) {
         showToast('error', 'Invalid link');
         return;
     }
 
+    // Check for valid URL patterns
     if (trimmed.startsWith('/')) {
+        // Internal route - navigate normally
         window.location.href = trimmed;
         return;
     }
 
     const isHttp = /^https?:\/\//i.test(trimmed);
-    if (!isHttp) {
-        showToast('error', 'Invalid link');
+    const isTel = /^tel:/i.test(trimmed);
+    const isMailto = /^mailto:/i.test(trimmed);
+    
+    if (!isHttp && !isTel && !isMailto) {
+        // Not a valid URL protocol, show error
+        showToast('error', 'Invalid link format');
         return;
     }
 
@@ -91,6 +99,9 @@ function showCelebration(tracker) {
     const modal = document.getElementById('celebration-modal');
     const productNameEl = document.getElementById('celeb-product-name');
     const savingsEl = document.getElementById('celeb-savings');
+    
+    // Store the tracker globally so buyNowFromCelebration can access it
+    celebrationTracker = tracker;
     
     if (modal && tracker) {
         productNameEl.textContent = tracker.productName || 'Product';
@@ -165,12 +176,24 @@ function checkPriceReached(tracker) {
 // ==================== TILT EFFECT ====================
 
 function initTilt() {
-    // Disable tilt on dashboard to prevent cursor flicker/shiver on clickable controls.
+    // Completely disable tilt on dashboard to prevent cursor flicker/shiver on clickable controls.
+    // Remove any tilt-related event listeners and CSS transforms
     const tiltRoots = document.querySelectorAll('.tilt-root');
     tiltRoots.forEach((root) => {
+        // Remove tilt-active class
         root.classList.remove('tilt-active');
-        root.style.setProperty('--tilt-x', '0deg');
-        root.style.setProperty('--tilt-y', '0deg');
+        // Reset CSS custom properties
+        root.style.removeProperty('--tilt-x');
+        root.style.removeProperty('--tilt-y');
+        // Remove the transform that causes the issue
+        root.style.transform = 'none';
+        root.style.perspective = 'none';
+    });
+    
+    // Remove any existing tilt mouse event listeners
+    document.querySelectorAll('.tilt-root').forEach(root => {
+        const newRoot = root.cloneNode(true);
+        root.parentNode.replaceChild(newRoot, root);
     });
 }
 
@@ -810,7 +833,7 @@ function connectTelegram() {
                     <i class="fa fa-telegram"></i>
                 </div>
                 <p>Get instant price drop alerts on Telegram!</p>
-                <button class="action-btn" onclick="window.open('https://t.me/AI_Price_Alert_Bot', '_blank')">
+                <button class="action-btn" onclick="openSafeUrl('https://t.me/AI_Price_Alert_Bot', true)">
                     <i class="fa fa-external-link"></i> Open Telegram Bot
                 </button>
             </div>
