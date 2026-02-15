@@ -72,6 +72,27 @@ function initAds() {
  * Load Google AdSense script
  */
 function loadAdSenseScript() {
+    // Check if script is already loaded (either statically or dynamically)
+    if (window.adsbygoogle) {
+        console.log('AdSense script already loaded, rendering ads...');
+        renderAds();
+        return;
+    }
+    
+    // Check if script tag already exists in document
+    const existingScript = document.querySelector('script[src*="adsbygoogle"]');
+    if (existingScript) {
+        console.log('AdSense script tag already exists, waiting for load...');
+        existingScript.onload = function() {
+            renderAds();
+        };
+        existingScript.onerror = function() {
+            console.error('Failed to load AdSense script');
+            showAdPlaceholders();
+        };
+        return;
+    }
+    
     try {
         const script = document.createElement('script');
         script.async = true;
