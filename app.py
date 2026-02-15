@@ -837,8 +837,11 @@ def get_site_info(url):
         return 'unknown', 'USD', '$'
 
 def scrape_price(soup, site, currency_symbol):
-    """Generic price scraper"""
+    """Generic price scraper - improved to handle more cases"""
+    
+    # Try multiple selectors for Amazon
     if site == 'amazon':
+        # Try new Amazon price structure
         price_elem = soup.find("span", {"class": "a-price"})
         if price_elem:
             whole = price_elem.find("span", {"class": "a-price-whole"})
@@ -846,15 +849,100 @@ def scrape_price(soup, site, currency_symbol):
                 price = parse_price(whole.get_text())
                 if price:
                     return price
-    
-    if site in ['flipkart', 'myntra', 'ajio', 'meesho', 'snapdeal']:
-        price_elem = soup.find(string=lambda t: t and '₹' in t)
+        
+        # Try alternative Amazon selectors
+        price_elem = soup.select_one('.a-price-whole')
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        # Try product price ID
+        price_elem = soup.find("span", {"id": "priceblock_ourprice"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        # Try deal price
+        price_elem = soup.find("span", {"class": "a-price-whole"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        # Try to find any element with price text
+        price_elem = soup.find(string=re.compile(r'₹\s*[\d,]+'))
         if price_elem:
             nums = re.findall(r'₹\s*([\d,]+\.?\d*)', price_elem)
             for match in nums:
                 price = parse_price(match.replace(',', ''))
                 if price and 50 < price < 100000:
                     return price
+    
+    # Try multiple selectors for Flipkart
+    if site == 'flipkart':
+        price_elem = soup.find("div", {"class": "_30jeq3"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        price_elem = soup.find("div", {"class": "Nx9bqj"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+    
+    # Try multiple selectors for Myntra
+    if site == 'myntra':
+        price_elem = soup.find("span", {"class": "pdp-price"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+    
+    # Try multiple selectors for Ajio
+    if site == 'ajio':
+        price_elem = soup.find("span", {"class": "prod-price"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+    
+    # Try multiple selectors for Meesho
+    if site == 'meesho':
+        price_elem = soup.find("h3", {"class": "Sc-product-price"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+    
+    # Try multiple selectors for Snapdeal
+    if site == 'snapdeal':
+        price_elem = soup.find("span", {"class": "product-price"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+    
+    # Fallback: search for currency symbol anywhere in the page
+    price_elem = soup.find(string=re.compile(r'₹\s*[\d,]+'))
+    if price_elem:
+        nums = re.findall(r'₹\s*([\d,]+\.?\d*)', price_elem)
+        for match in nums:
+            price = parse_price(match.replace(',', ''))
+            if price and 50 < price < 100000:
+                return price
+    
+    # Try for $ symbol (USD/GBP)
+    price_elem = soup.find(string=re.compile(r'\$\s*[\d,]+\.?\d*'))
+    if price_elem:
+        nums = re.findall(r'\$\s*([\d,]+\.?\d*)', price_elem)
+        for match in nums:
+            price = parse_price(match.replace(',', ''))
+            if price and 1 < price < 10000:
+                return price
     
     return None
 
@@ -876,13 +964,23 @@ def get_price():
     if not (url.startswith('http://') or url.startswith('https://')):
         return jsonify({"error": "Invalid URL format"}), 400
 
+    # Enhanced headers to avoid being blocked
     headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0"
     }
 
     try:
-        response = requests.get(url, headers=headers, timeout=8)
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
             return jsonify({"error": f"Failed to fetch page (Status: {response.status_code})"}), response.status_code
         
@@ -897,14 +995,39 @@ def get_price():
             product_name = re.sub(r'\s*[-|]\s*(Amazon|Flipkart|Myntra|Ajio|Meesho|Snapdeal)\s*$', '', title, flags=re.IGNORECASE).strip()
         
         if price is None:
-            return jsonify({"error": "Could not find price on this page"}), 404
+            # Last resort: try to find any price-like pattern in the entire HTML
+            html_text = response.text
+            # Try to find any currency pattern
+            price_patterns = [
+                r'₹\s*([\d,]+\.?\d*)',
+                r'INR\s*([\d,]+\.?\d*)',
+                r'\$\s*([\d,]+\.?\d*)',
+                r'USD\s*([\d,]+\.?\d*)',
+                r'£\s*([\d,]+\.?\d*)',
+                r'GBP\s*([\d,]+\.?\d*)'
+            ]
+            for pattern in price_patterns:
+                matches = re.findall(pattern, html_text)
+                for match in matches:
+                    price = parse_price(match.replace(',', ''))
+                    if price and 50 < price < 100000:
+                        return jsonify({
+                            "price": price, "currency": currency, 
+                            "currency_symbol": currency_symbol, "productName": product_name
+                        })
+            
+            return jsonify({"error": "Could not find price on this page. The website structure may have changed."}), 404
         
         return jsonify({
             "price": price, "currency": currency, 
             "currency_symbol": currency_symbol, "productName": product_name
         })
+    except requests.exceptions.Timeout:
+        return jsonify({"error": "Request timed out. Please try again."}), 504
+    except requests.exceptions.ConnectionError:
+        return jsonify({"error": "Could not connect to the website. Please check the URL."}), 502
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error: {str(e)}"}), 500
 
 # ==================== STATIC FILES ====================
 
