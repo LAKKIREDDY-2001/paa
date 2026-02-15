@@ -426,6 +426,16 @@ body {
     gap: 10px;
 }
 
+button,
+button * {
+    cursor: pointer !important;
+}
+
+button i,
+button span {
+    pointer-events: none;
+}
+
 .action-btn:hover {
     transform: translateY(-3px) scale(1.02);
     box-shadow: 0 12px 30px rgba(255, 159, 10, 0.4);
