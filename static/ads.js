@@ -72,34 +72,51 @@ function initAds() {
  * Load Google AdSense script
  */
 function loadAdSenseScript() {
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + AdSenseConfig.publisherId;
-    script.crossOrigin = 'anonymous';
-    document.head.appendChild(script);
-    
-    script.onload = function() {
-        renderAds();
-    };
+    try {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + AdSenseConfig.publisherId;
+        script.crossOrigin = 'anonymous';
+        
+        script.onerror = function() {
+            console.error('Failed to load AdSense script');
+            showAdPlaceholders();
+        };
+        
+        script.onload = function() {
+            renderAds();
+        };
+        
+        document.head.appendChild(script);
+    } catch (e) {
+        console.error('Error loading AdSense:', e);
+        showAdPlaceholders();
+    }
 }
 
 /**
  * Render all ads on the page
  */
 function renderAds() {
-    const adSlots = document.querySelectorAll('[data-ad-slot]');
-    adSlots.forEach(function(slot) {
-        const slotId = slot.getAttribute('data-ad-slot');
-        if (AdSenseConfig.adUnits[slotId]) {
-            const adUnitId = AdSenseConfig.adUnits[slotId];
-            slot.innerHTML = '<ins class="adsbygoogle" style="display:block" data-ad-client="' + AdSenseConfig.publisherId + '" data-ad-slot="' + adUnitId + '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
-            try {
-                (adsbygoogle = window.adsbygoogle || []).push({});
-            } catch (e) {
-                console.error('AdSense error:', e);
+    try {
+        const adSlots = document.querySelectorAll('[data-ad-slot]');
+        adSlots.forEach(function(slot) {
+            const slotId = slot.getAttribute('data-ad-slot');
+            if (AdSenseConfig.adUnits[slotId]) {
+                const adUnitId = AdSenseConfig.adUnits[slotId];
+                slot.innerHTML = '<ins class="adsbygoogle" style="display:block" data-ad-client="' + AdSenseConfig.publisherId + '" data-ad-slot="' + adUnitId + '" data-ad-format="auto" data-full-width-responsive="true"></ins>';
+                try {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                } catch (e) {
+                    console.error('AdSense push error:', e);
+                    // Show placeholder instead of broken ad
+                    slot.innerHTML = '<div class="ad-placeholder"><div class="ad-placeholder-content"><span class="ad-label">Advertisement</span><div class="ad-placeholder-box"><i class="fa fa-ad"></i><span>Ad</span></div></div></div>';
+                }
             }
-        }
-    });
+        });
+    } catch (e) {
+        console.error('AdSense render error:', e);
+    }
 }
 
 /**

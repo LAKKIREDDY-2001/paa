@@ -47,14 +47,41 @@ function openSafeUrl(url, newTab = true) {
     // Validate input
     if (!url || typeof url !== 'string') {
         console.error('Invalid URL: not a string or empty');
+        showToast('error', 'Invalid product URL');
         return;
     }
 
     const trimmed = url.trim();
     
-    // Comprehensive validation to prevent about:blank
-    if (!trimmed || trimmed === '' || trimmed === 'about:blank' || trimmed === 'null' || trimmed === 'undefined' || trimmed.length < 5) {
-        console.error('Invalid URL: trimmed value is invalid:', trimmed);
+    // Comprehensive validation to prevent about:blank and other invalid URLs
+    const invalidPatterns = [
+        'about:blank',
+        'about:',
+        'javascript:',
+        'null',
+        'undefined',
+        'chrome:',
+        'chrome-extension:',
+        'moz-extension:',
+        'edge:',
+        'data:',
+        'vbscript:',
+        ''
+    ];
+    
+    // Check for invalid patterns
+    for (const pattern of invalidPatterns) {
+        if (trimmed === pattern || trimmed.toLowerCase().startsWith(pattern.toLowerCase())) {
+            console.error('Invalid URL: blocked pattern:', pattern);
+            showToast('error', 'Invalid product URL');
+            return;
+        }
+    }
+    
+    // Additional length check
+    if (trimmed.length < 5) {
+        console.error('Invalid URL: too short:', trimmed);
+        showToast('error', 'Invalid product URL');
         return;
     }
 
@@ -73,6 +100,7 @@ function openSafeUrl(url, newTab = true) {
     
     if (!isHttps && !isHttp && !isTel && !isMailto) {
         console.error('Invalid URL: no valid protocol:', trimmed);
+        showToast('error', 'Invalid product URL');
         return;
     }
 
@@ -80,7 +108,19 @@ function openSafeUrl(url, newTab = true) {
     if (newTab) {
         const validUrl = isHttps || isHttp || isTel || isMailto;
         if (validUrl && (trimmed.startsWith('http') || trimmed.startsWith('tel') || trimmed.startsWith('mailto'))) {
-            window.open(trimmed, '_blank', 'noopener,noreferrer');
+            try {
+                const openedWindow = window.open(trimmed, '_blank', 'noopener,noreferrer');
+                // Check if window was blocked by popup blocker
+                if (!openedWindow || openedWindow === null || openedWindow === undefined) {
+                    console.error('Popup was blocked');
+                    showToast('error', 'Popup blocked. Please allow popups for this site.');
+                    // Fallback to same window
+                    window.location.href = trimmed;
+                }
+            } catch (e) {
+                console.error('Error opening URL:', e);
+                showToast('error', 'Could not open link');
+            }
         }
     } else {
         window.location.href = trimmed;
@@ -178,13 +218,28 @@ function buyNowFromCelebration() {
     
     const url = celebrationTracker.url;
     
-    // Validate the URL in the tracker
-    if (!url || typeof url !== 'string' || url.trim() === '' || url.trim().length < 5) {
+    // Validate the URL in the tracker - more rigorous validation
+    if (!url || typeof url !== 'string') {
         showToast('error', 'Invalid product URL');
         return;
     }
     
-    openSafeUrl(url, true);
+    const trimmedUrl = url.trim();
+    
+    // Check for empty or invalid URLs
+    if (!trimmedUrl || trimmedUrl.length < 10) {
+        showToast('error', 'Invalid product URL');
+        return;
+    }
+    
+    // Check for valid URL format (must start with http or https)
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+        showToast('error', 'Invalid product URL format');
+        return;
+    }
+    
+    // All validations passed - use safe URL opening
+    openSafeUrl(trimmedUrl, true);
 }
 
 function checkPriceReached(tracker) {
@@ -644,10 +699,14 @@ function generateChart(tracker) {
     // Only show buy now button if tracker has valid URL
     const buyNowBtn = document.getElementById('buy-now-btn');
     if (buyNowBtn) {
-        const hasValidUrl = tracker.url && typeof tracker.url === 'string' && tracker.url.trim().length > 5;
+        // More rigorous URL validation
+        const hasValidUrl = tracker.url && 
+                           typeof tracker.url === 'string' && 
+                           tracker.url.trim().length >= 10 &&
+                           /^https?:\/\//i.test(tracker.url.trim());
         buyNowBtn.style.display = (tracker.currentPrice <= tracker.targetPrice && hasValidUrl) ? 'flex' : 'none';
         if (hasValidUrl) {
-            buyNowBtn.onclick = () => openSafeUrl(tracker.url, true);
+            buyNowBtn.onclick = () => openSafeUrl(tracker.url.trim(), true);
         }
     }
 }
