@@ -44,16 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function openSafeUrl(url, newTab = true) {
+    // Validate input
     if (!url || typeof url !== 'string') {
-        showToast('error', 'Invalid link');
+        console.error('Invalid URL: not a string or empty');
         return;
     }
 
     const trimmed = url.trim();
     
-    // Additional validation to prevent about:blank
-    if (!trimmed || trimmed === '' || trimmed === 'about:blank' || trimmed.length < 5) {
-        showToast('error', 'Invalid link');
+    // Comprehensive validation to prevent about:blank
+    if (!trimmed || trimmed === '' || trimmed === 'about:blank' || trimmed === 'null' || trimmed === 'undefined' || trimmed.length < 5) {
+        console.error('Invalid URL: trimmed value is invalid:', trimmed);
         return;
     }
 
@@ -64,18 +65,23 @@ function openSafeUrl(url, newTab = true) {
         return;
     }
 
-    const isHttp = /^https?:\/\//i.test(trimmed);
+    // Check for valid URL protocols
+    const isHttps = /^https:\/\//i.test(trimmed);
+    const isHttp = /^http:\/\//i.test(trimmed);
     const isTel = /^tel:/i.test(trimmed);
     const isMailto = /^mailto:/i.test(trimmed);
     
-    if (!isHttp && !isTel && !isMailto) {
-        // Not a valid URL protocol, show error
-        showToast('error', 'Invalid link format');
+    if (!isHttps && !isHttp && !isTel && !isMailto) {
+        console.error('Invalid URL: no valid protocol:', trimmed);
         return;
     }
 
+    // Only open if it's a valid complete URL
     if (newTab) {
-        window.open(trimmed, '_blank', 'noopener,noreferrer');
+        const validUrl = isHttps || isHttp || isTel || isMailto;
+        if (validUrl && (trimmed.startsWith('http') || trimmed.startsWith('tel') || trimmed.startsWith('mailto'))) {
+            window.open(trimmed, '_blank', 'noopener,noreferrer');
+        }
     } else {
         window.location.href = trimmed;
     }
@@ -164,9 +170,21 @@ function createConfetti() {
 }
 
 function buyNowFromCelebration() {
-    if (celebrationTracker && celebrationTracker.url) {
-        openSafeUrl(celebrationTracker.url, true);
+    // Validate celebrationTracker before using
+    if (!celebrationTracker) {
+        showToast('error', 'No product selected');
+        return;
     }
+    
+    const url = celebrationTracker.url;
+    
+    // Validate the URL in the tracker
+    if (!url || typeof url !== 'string' || url.trim() === '' || url.trim().length < 5) {
+        showToast('error', 'Invalid product URL');
+        return;
+    }
+    
+    openSafeUrl(url, true);
 }
 
 function checkPriceReached(tracker) {
@@ -622,8 +640,16 @@ function generateChart(tracker) {
     document.getElementById('trend-lowest').textContent = (tracker.currencySymbol || '$') + Math.min(...data).toFixed(2);
     document.getElementById('trend-highest').textContent = (tracker.currencySymbol || '$') + Math.max(...data).toFixed(2);
     document.getElementById('trend-since').textContent = new Date(tracker.createdAt).toLocaleDateString();
-    document.getElementById('buy-now-btn').style.display = tracker.currentPrice <= tracker.targetPrice ? 'flex' : 'none';
-    document.getElementById('buy-now-btn').onclick = () => openSafeUrl(tracker.url, true);
+    
+    // Only show buy now button if tracker has valid URL
+    const buyNowBtn = document.getElementById('buy-now-btn');
+    if (buyNowBtn) {
+        const hasValidUrl = tracker.url && typeof tracker.url === 'string' && tracker.url.trim().length > 5;
+        buyNowBtn.style.display = (tracker.currentPrice <= tracker.targetPrice && hasValidUrl) ? 'flex' : 'none';
+        if (hasValidUrl) {
+            buyNowBtn.onclick = () => openSafeUrl(tracker.url, true);
+        }
+    }
 }
 
 function setTimePeriod(period) {
