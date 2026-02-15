@@ -473,6 +473,12 @@ button span {
 
 .supported-sites span:hover { transform: translateY(-2px); }
 .supported-sites i { font-size: 1.3rem; color: var(--accent-orange); }
+.supported-sites .brand-logo {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    border-radius: 4px;
+}
 
 /* ============================================
    TRACKERS SECTION

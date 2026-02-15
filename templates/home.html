@@ -62,11 +62,11 @@
             <div class="trusted-by">
                 <p>Trusted by 50,000+ smart shoppers</p>
                 <div class="store-logos">
-                    <span><i class="fa fa-amazon"></i> Amazon</span>
-                    <span><i class="fa fa-shopping-cart"></i> Flipkart</span>
-                    <span><i class="fa fa-tag"></i> Myntra</span>
-                    <span><i class="fa fa-shopping-bag"></i> Ajio</span>
-                    <span><i class="fa fa-mobile"></i> Meesho</span>
+                    <span><img class="brand-logo" src="https://logo.clearbit.com/amazon.in" alt="Amazon logo"> Amazon</span>
+                    <span><img class="brand-logo" src="https://logo.clearbit.com/flipkart.com" alt="Flipkart logo"> Flipkart</span>
+                    <span><img class="brand-logo" src="https://logo.clearbit.com/myntra.com" alt="Myntra logo"> Myntra</span>
+                    <span><img class="brand-logo" src="https://logo.clearbit.com/ajio.com" alt="Ajio logo"> Ajio</span>
+                    <span><img class="brand-logo" src="https://logo.clearbit.com/meesho.com" alt="Meesho logo"> Meesho</span>
                 </div>
             </div>
         </section>
@@ -467,8 +467,11 @@
             font-size: clamp(0.8rem, 1.5vw, 0.9rem);
         }
         
-        .store-logos i {
-            font-size: 1.2rem;
+        .store-logos .brand-logo {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            border-radius: 4px;
         }
         
         /* Features Section */
