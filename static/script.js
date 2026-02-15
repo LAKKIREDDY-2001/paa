@@ -24,6 +24,36 @@ document.addEventListener('DOMContentLoaded', () => {
     initCelebration();
 });
 
+function openSafeUrl(url, newTab = true) {
+    if (!url || typeof url !== 'string') {
+        showToast('error', 'Invalid link');
+        return;
+    }
+
+    const trimmed = url.trim();
+    if (!trimmed || trimmed === 'about:blank') {
+        showToast('error', 'Invalid link');
+        return;
+    }
+
+    if (trimmed.startsWith('/')) {
+        window.location.href = trimmed;
+        return;
+    }
+
+    const isHttp = /^https?:\/\//i.test(trimmed);
+    if (!isHttp) {
+        showToast('error', 'Invalid link');
+        return;
+    }
+
+    if (newTab) {
+        window.open(trimmed, '_blank', 'noopener,noreferrer');
+    } else {
+        window.location.href = trimmed;
+    }
+}
+
 // ==================== CELEBRATION FUNCTIONS ====================
 
 function initCelebration() {
@@ -105,7 +135,7 @@ function createConfetti() {
 
 function buyNowFromCelebration() {
     if (celebrationTracker && celebrationTracker.url) {
-        window.open(celebrationTracker.url, '_blank');
+        openSafeUrl(celebrationTracker.url, true);
     }
 }
 
@@ -554,7 +584,7 @@ function generateChart(tracker) {
     document.getElementById('trend-highest').textContent = (tracker.currencySymbol || '$') + Math.max(...data).toFixed(2);
     document.getElementById('trend-since').textContent = new Date(tracker.createdAt).toLocaleDateString();
     document.getElementById('buy-now-btn').style.display = tracker.currentPrice <= tracker.targetPrice ? 'flex' : 'none';
-    document.getElementById('buy-now-btn').onclick = () => window.open(tracker.url, '_blank');
+    document.getElementById('buy-now-btn').onclick = () => openSafeUrl(tracker.url, true);
 }
 
 function setTimePeriod(period) {
