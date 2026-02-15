@@ -734,6 +734,28 @@ function handleForgotPasswordClick() {
     });
 }
 
+// Direct click handler for the Login button
+function handleLoginClick() {
+    console.log('handleLoginClick called');
+    handleLogin({ 
+        preventDefault: function() {}, 
+        stopPropagation: function() {}, 
+        target: document.getElementById('login-form'),
+        target: { querySelector: function(sel) { return document.querySelector(sel); } }
+    });
+}
+
+// Direct click handler for the Signup button
+function handleSignupClick() {
+    console.log('handleSignupClick called');
+    handleSignup({ 
+        preventDefault: function() {}, 
+        stopPropagation: function() {}, 
+        target: document.getElementById('signup-form'),
+        target: { querySelector: function(sel) { return document.querySelector(sel); } }
+    });
+}
+
 async function handleForgotPassword(e) {
     e.preventDefault();
 
