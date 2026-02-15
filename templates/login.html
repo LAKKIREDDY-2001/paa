@@ -42,7 +42,8 @@
                 <p>Sign in to access your price trackers</p>
             </div>
 
-            <form id="login-form" class="auth-form">
+            <!-- Login Form - Using div instead of form to prevent default submission -->
+            <div id="login-form" class="auth-form">
                 <div class="form-group">
                     <label for="login-email"><i class="fa fa-envelope"></i> Email</label>
                     <input type="email" id="login-email" name="email" placeholder="Enter your email" required>
@@ -61,13 +62,13 @@
                     <a href="/forgot-password" class="forgot-password" id="forgot-password-link">Forgot Password?</a>
                 </div>
 
-                <button type="submit" class="auth-btn" id="login-btn">
+                <button type="button" class="auth-btn" id="login-btn">
                     <span>Sign In</span>
                     <i class="fa fa-arrow-right"></i>
                 </button>
 
                 <div id="error-message" class="error-message" style="display: none;"></div>
-            </form>
+            </div>
 
             <div class="auth-footer">
                 <p>Don't have an account? <a href="/signup">Sign Up</a></p>
@@ -140,5 +141,22 @@
 
     <script src="/static/auth.js"></script>
     <script src="/static/ads.js"></script>
+    <script>
+        // Direct click handler for login button
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginBtn = document.getElementById('login-btn');
+            if (loginBtn) {
+                loginBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Call the login handler directly
+                    if (typeof handleLogin === 'function') {
+                        handleLogin({ preventDefault: function() {}, stopPropagation: function() {}, target: document.getElementById('login-form') });
+                    }
+                    return false;
+                });
+            }
+        });
+    </script>
 </body>
 </html>
