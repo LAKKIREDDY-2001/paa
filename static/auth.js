@@ -660,6 +660,8 @@ async function handleLogin(e) {
     const email = emailInput?.value;
     const passwordInput = document.getElementById('login-password') || document.getElementById('password');
     const password = passwordInput?.value;
+    const rememberCheckbox = document.getElementById('remember');
+    const remember = rememberCheckbox ? rememberCheckbox.checked : true;
     const errorMessage = document.getElementById('error-message');
     const submitBtn = document.getElementById('login-btn');
     
@@ -685,7 +687,7 @@ async function handleLogin(e) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, remember })
         });
         const rawText = await response.text();
         let data = {};

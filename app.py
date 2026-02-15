@@ -22,9 +22,16 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # 30 days persistent session
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True, origins="*")
+
+# Enable permanent sessions by default
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
 
 def resolve_database_path():
     configured_path = os.environ.get('DATABASE_PATH')
@@ -34,17 +41,35 @@ def resolve_database_path():
         if os.access(db_dir, os.W_OK):
             return configured_path
 
-    # Render persistent disk default mount path
-    render_persistent_path = '/var/data/database.db'
-    render_dir = os.path.dirname(render_persistent_path)
-    if os.path.isdir(render_dir) and os.access(render_dir, os.W_OK):
-        return render_persistent_path
+    # Try Render persistent disk mount path first
+    render_persistent_paths = [
+        '/var/data/database.db',
+        '/opt/render/project/src/database.db',
+        '/home/app/database.db'
+    ]
+    for render_path in render_persistent_paths:
+        render_dir = os.path.dirname(render_path)
+        if os.path.isdir(render_dir) and os.access(render_dir, os.W_OK):
+            os.makedirs(render_dir, exist_ok=True)
+            return render_path
 
+    # Try /data directory (common in containerized deployments)
+    data_dir = '/data'
+    if os.path.isdir(data_dir) or os.access(os.path.dirname(data_dir), os.W_OK):
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+            if os.access(data_dir, os.W_OK):
+                return os.path.join(data_dir, 'database.db')
+        except:
+            pass
+
+    # Fallback to local path in project directory
     local_path = os.path.join(os.getcwd(), 'database.db')
     local_dir = os.path.dirname(local_path) or '.'
     if os.access(local_dir, os.W_OK):
         return local_path
 
+    # Last resort: tmp directory
     return '/tmp/database.db'
 
 DATABASE = resolve_database_path()
@@ -223,7 +248,8 @@ def init_db():
             phone_verified INTEGER DEFAULT 0,
             two_factor_enabled INTEGER DEFAULT 0,
             two_factor_method TEXT DEFAULT 'none',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP
         )
     ''')
     
@@ -477,15 +503,24 @@ def login():
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
             user = cursor.fetchone()
-            conn.close()
 
             if user and check_password_hash(user[3], password):
+                # Update last login timestamp before closing connection
+                cursor.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user[0],))
+                conn.commit()
+                conn.close()
+                
                 session['user_id'] = user[0]
+                session['remember_me'] = data.get('remember', False)
+                # Extend session if remember me is checked
+                if session.get('remember_me'):
+                    session.permanent = True
                 return jsonify({
                     "success": "Logged in successfully",
                     "redirect": "/dashboard"
                 }), 200
             else:
+                conn.close()
                 return jsonify({"error": "Invalid credentials"}), 401
         except Exception:
             return jsonify({"error": "Login failed. Please try again."}), 500
