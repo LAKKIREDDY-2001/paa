@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (signupForm) {
         signupForm.addEventListener('submit', handleSignup);
-        setupSignupOTPEvents();
     }
 
     if (loginForm) {
@@ -110,7 +109,7 @@ async function handleSignup(e) {
     // Show loading state
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Sending OTP...';
+        submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating Account...';
     }
     if (errorMessage) {
         errorMessage.style.display = 'none';
@@ -133,14 +132,15 @@ async function handleSignup(e) {
         }
         
         if (response.ok) {
-            // Store signup token and show verification section
-            signupToken = data.signupToken;
-            showVerificationSection(email, phone);
+            showToast('success', 'Account created successfully! Redirecting to login...');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
         } else {
-            showError(data.error || 'Failed to send OTP. Please try again.');
+            showError(data.error || 'Failed to create account. Please try again.');
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<span>Continue to Verification</span><i class="fa fa-arrow-right"></i>';
+                submitBtn.innerHTML = '<span>Create Account</span><i class="fa fa-arrow-right"></i>';
             }
         }
     } catch (error) {
@@ -148,7 +148,7 @@ async function handleSignup(e) {
         showError('An error occurred. Please try again.');
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>Continue to Verification</span><i class="fa fa-arrow-right"></i>';
+            submitBtn.innerHTML = '<span>Create Account</span><i class="fa fa-arrow-right"></i>';
         }
     }
 }

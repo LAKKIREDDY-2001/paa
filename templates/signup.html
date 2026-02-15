@@ -78,84 +78,12 @@
                 </div>
 
                 <button type="submit" class="auth-btn">
-                    <span>Continue to Verification</span>
+                    <span>Create Account</span>
                     <i class="fa fa-arrow-right"></i>
                 </button>
 
                 <div id="error-message" class="error-message" style="display: none;"></div>
             </form>
-
-            <!-- Step 2: OTP Verification -->
-            <div id="verification-section" class="verification-section" style="display: none;">
-                <h2><i class="fa fa-shield"></i> Verify Your Account</h2>
-                <p class="verification-info">Enter the OTP sent to your email and phone to complete registration</p>
-                
-                <div class="verification-methods">
-                    <!-- Email OTP -->
-                    <div class="verification-method" id="email-verification">
-                        <div class="method-header">
-                            <i class="fa fa-envelope"></i>
-                            <span>Email Verification</span>
-                            <span class="verification-status" id="email-status">Pending</span>
-                        </div>
-                        <div class="method-content">
-                            <p id="email-address">Send OTP to: <span class="target"></span></p>
-                            <div class="otp-input-group">
-                                <input type="text" id="email-otp" placeholder="Enter 6-digit OTP" maxlength="6">
-                                <button type="button" class="otp-btn" id="send-email-otp">
-                                    <i class="fa fa-paper-plane"></i> Send OTP
-                                </button>
-                            </div>
-                            <button type="button" class="verify-btn" id="verify-email-otp">
-                                <i class="fa fa-check"></i> Verify Email
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Phone OTP -->
-                    <div class="verification-method" id="phone-verification" style="display: none;">
-                        <div class="method-header">
-                            <i class="fa fa-phone"></i>
-                            <span>Phone Verification</span>
-                            <span class="verification-status" id="phone-status">Pending</span>
-                        </div>
-                        <div class="method-content">
-                            <p id="phone-number">Send OTP to: <span class="target"></span></p>
-                            <div class="otp-input-group">
-                                <input type="text" id="phone-otp" placeholder="Enter 6-digit OTP" maxlength="6">
-                                <button type="button" class="otp-btn" id="send-phone-otp">
-                                    <i class="fa fa-paper-plane"></i> Send OTP
-                                </button>
-                            </div>
-                            <button type="button" class="verify-btn" id="verify-phone-otp">
-                                <i class="fa fa-check"></i> Verify Phone
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="verification-progress">
-                    <div class="progress-step active" id="step-1">
-                        <span class="step-number">1</span>
-                        <span class="step-label">Account Info</span>
-                    </div>
-                    <div class="progress-line"></div>
-                    <div class="progress-step" id="step-2">
-                        <span class="step-number">2</span>
-                        <span class="step-label">Verify</span>
-                    </div>
-                    <div class="progress-line"></div>
-                    <div class="progress-step" id="step-3">
-                        <span class="step-number">3</span>
-                        <span class="step-label">Complete</span>
-                    </div>
-                </div>
-
-                <button type="button" class="auth-btn" id="complete-signup" disabled>
-                    <span>Complete Registration</span>
-                    <i class="fa fa-check"></i>
-                </button>
-            </div>
 
             <div class="auth-footer">
                 <p>Already have an account? <a href="/login">Sign In</a></p>

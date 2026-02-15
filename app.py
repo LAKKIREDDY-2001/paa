@@ -315,7 +315,7 @@ def blog_amazon_history():
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """Signup page - redirect to dashboard if already logged in"""
+    """Signup page - direct account creation (OTP removed)"""
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -338,48 +338,18 @@ def signup():
             if cursor.fetchone():
                 conn.close()
                 return jsonify({"error": "Email already exists"}), 409
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pending_signups (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    signup_token TEXT UNIQUE NOT NULL,
-                    username TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    password TEXT NOT NULL,
-                    phone TEXT,
-                    email_otp TEXT,
-                    email_otp_expiry TIMESTAMP,
-                    phone_otp TEXT,
-                    phone_otp_expiry TIMESTAMP,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
 
-            cursor.execute("SELECT id FROM pending_signups WHERE email = ?", (email,))
-            if cursor.fetchone():
-                cursor.execute("DELETE FROM pending_signups WHERE email = ?", (email,))
-
-            conn.commit()
-            conn.close()
-
-            import uuid
-            signup_token = str(uuid.uuid4())
-            
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
             cursor.execute("""
-                INSERT INTO pending_signups (signup_token, username, email, password, phone)
+                INSERT INTO users (username, email, password, phone, email_verified)
                 VALUES (?, ?, ?, ?, ?)
-            """, (signup_token, username, email, generate_password_hash(password), phone))
+            """, (username, email, generate_password_hash(password), phone, 1))
             conn.commit()
             conn.close()
 
             return jsonify({
-                "success": "OTP sent for verification",
-                "signupToken": signup_token,
-                "email": email,
-                "phone": phone
-            }), 200
+                "success": "Account created successfully!",
+                "message": "Redirecting to login..."
+            }), 201
         except Exception:
             return jsonify({"error": "Signup failed. Please try again."}), 500
 
