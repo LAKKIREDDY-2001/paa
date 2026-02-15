@@ -79,7 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // DIRECT onclick handlers on buttons - most reliable method
     if (signupForm) {
         console.log('Signup form found');
-        const signupBtn = signupForm.querySelector('button[type="submit"]');
+        // Look for button with id signup-btn (most reliable)
+        const signupBtn = document.getElementById('signup-btn');
         if (signupBtn) {
             console.log('Signup button found, adding onclick');
             signupBtn.onclick = function(e) {
@@ -94,7 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (loginForm) {
         console.log('Login form found');
-        const loginBtn = loginForm.querySelector('button[type="submit"]');
+        // Look for button with id login-btn (most reliable)
+        const loginBtn = document.getElementById('login-btn');
         if (loginBtn) {
             console.log('Login button found, adding onclick');
             loginBtn.onclick = function(e) {
@@ -159,7 +161,8 @@ async function handleSignup(e) {
     const password = document.getElementById('password')?.value;
     const confirmPassword = document.getElementById('confirm_password')?.value;
     const errorMessage = document.getElementById('error-message');
-    const submitBtn = e?.target?.querySelector('button[type="submit"]');
+    // Get button by ID directly - more reliable
+    const submitBtn = document.getElementById('signup-btn');
     
     console.log('handleSignup called', { username, email, submitBtn });
     
@@ -663,6 +666,7 @@ async function handleLogin(e) {
     const rememberCheckbox = document.getElementById('remember');
     const remember = rememberCheckbox ? rememberCheckbox.checked : true;
     const errorMessage = document.getElementById('error-message');
+    // Get button by ID directly - more reliable
     const submitBtn = document.getElementById('login-btn');
     
     // Validate required fields
@@ -759,7 +763,7 @@ function handleSignupClick() {
 }
 
 async function handleForgotPassword(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
     // Find email input - check multiple possible IDs
     const emailInput = document.getElementById('forgot-email') ||
@@ -767,7 +771,8 @@ async function handleForgotPassword(e) {
                        document.querySelector('input[name="email"]');
     const email = emailInput?.value;
     const errorMessage = document.getElementById('error-message');
-    const submitBtn = e.target?.querySelector('button[type="submit"]');
+    // Get button by ID directly - more reliable
+    const submitBtn = document.getElementById('submit-btn');
 
     if (!email) {
         showError('Please enter your email address');
@@ -932,7 +937,7 @@ async function handleDirectPasswordReset(email) {
 }
 
 async function handleResetPassword(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     
     const passwordInput = document.getElementById('reset-password');
     const confirmPasswordInput = document.getElementById('reset-confirm-password');
@@ -940,7 +945,8 @@ async function handleResetPassword(e) {
     const confirmPassword = confirmPasswordInput?.value;
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
-    const submitBtn = e.target?.querySelector('button[type="submit"]');
+    // Get button by ID directly - more reliable
+    const submitBtn = document.getElementById('reset-password-btn');
     
     // Validate passwords
     if (!password || !confirmPassword) {
