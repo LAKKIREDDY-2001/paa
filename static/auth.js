@@ -3,6 +3,8 @@
 let signupToken = null;
 let emailVerified = false;
 let phoneVerified = false;
+let signupSubmitting = false;
+let loginSubmitting = false;
 
 // Backend API configuration
 // For local development: use empty string or 'http://localhost:8081'
@@ -57,6 +59,7 @@ function initTilt() {
 
 async function handleSignup(e) {
     e.preventDefault();
+    if (signupSubmitting) return;
     
     const username = document.getElementById('username')?.value;
     const email = document.getElementById('email')?.value;
@@ -85,6 +88,7 @@ async function handleSignup(e) {
     }
     
     // Show loading state
+    signupSubmitting = true;
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Creating Account...';
@@ -114,6 +118,7 @@ async function handleSignup(e) {
             setTimeout(() => {
                 window.location.href = '/login';
             }, 1500);
+            return;
         } else {
             showError(data.error || 'Failed to create account. Please try again.');
             if (submitBtn) {
@@ -128,6 +133,8 @@ async function handleSignup(e) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<span>Create Account</span><i class="fa fa-arrow-right"></i>';
         }
+    } finally {
+        signupSubmitting = false;
     }
 }
 
@@ -548,6 +555,7 @@ function updateProgress(step) {
 
 async function handleLogin(e) {
     e.preventDefault();
+    if (loginSubmitting) return;
     
     // Get email and password
     const emailInput = document.getElementById('login-email') || document.getElementById('email');
@@ -564,6 +572,7 @@ async function handleLogin(e) {
     }
     
     // Show loading state
+    loginSubmitting = true;
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Signing In...';
@@ -594,6 +603,7 @@ async function handleLogin(e) {
             setTimeout(() => {
                 window.location.href = '/dashboard';
             }, 1500);
+            return;
         } else {
             showError(data.error || 'Invalid credentials. Please try again.', errorMessage?.id || 'error-message');
             if (submitBtn) {
@@ -608,6 +618,8 @@ async function handleLogin(e) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<span>Sign In</span><i class="fa fa-arrow-right"></i>';
         }
+    } finally {
+        loginSubmitting = false;
     }
 }
 

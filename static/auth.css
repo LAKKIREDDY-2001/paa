@@ -252,6 +252,11 @@ h1, h2, h3 {
     cursor: pointer;
 }
 
+.auth-btn i,
+.auth-btn span {
+    pointer-events: none;
+}
+
 .auth-btn:hover:not(:disabled) {
     transform: translateY(-2px) translateZ(2px);
     box-shadow: 0 8px 25px rgba(255, 159, 10, 0.4);

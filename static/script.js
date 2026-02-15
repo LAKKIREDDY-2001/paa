@@ -3,12 +3,31 @@ let trackers = [];
 let currentFilter = 'all';
 let currentTracker = null;
 let celebrationTracker = null;
+let isTrackerActionInProgress = false;
 
 // Backend API configuration
 const getApiBaseUrl = () => {
     return window.location.origin;
 };
 const API_BASE_URL = getApiBaseUrl();
+
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        const rawText = await response.text();
+        let data = {};
+        try {
+            data = rawText ? JSON.parse(rawText) : {};
+        } catch (e) {
+            data = { error: rawText || 'Unexpected server response' };
+        }
+        return { response, data };
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
 
 // Celebration Configuration
 const celebrationColors = [
@@ -229,6 +248,10 @@ function switchView(viewName) {
 // ==================== PRICE TRACKING ====================
 
 async function handleFlow() {
+    if (isTrackerActionInProgress) {
+        return;
+    }
+
     const urlInput = document.getElementById('urlInput');
     const priceStep = document.getElementById('priceStep');
     const mainBtn = document.getElementById('mainBtn');
@@ -258,35 +281,42 @@ async function handleFlow() {
     }
     
     if (priceStep.style.display === 'none') {
+        isTrackerActionInProgress = true;
         setLoadingState(true, 'Fetching price...');
         
         try {
-            const response = await fetch(API_BASE_URL + '/get-price', {
+            const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/get-price', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url: url })
             });
-            
-            const data = await response.json();
-            
+
             if (response.ok) {
                 priceStep.style.display = 'block';
                 priceStep.innerHTML = '<p><strong>Current Price: ' + (data.currency_symbol || '$') + data.price + '</strong></p>' +
                     '<input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Set target price" value="' + (data.price * 0.9).toFixed(2) + '">';
+                mainBtn.disabled = false;
                 mainBtn.innerHTML = 'Create Tracker';
-                setLoadingState(false);
                 
                 priceStep.dataset.productName = data.productName || 'Product';
                 priceStep.dataset.currentPrice = data.price;
                 priceStep.dataset.currency = data.currency;
                 priceStep.dataset.currencySymbol = data.currency_symbol;
             } else {
-                setLoadingState(false);
+                mainBtn.disabled = false;
+                mainBtn.innerHTML = 'Start AI Tracking';
                 showToast('error', data.error || 'Failed to fetch price');
             }
         } catch (error) {
-            setLoadingState(false);
-            showToast('error', 'Failed to connect to server');
+            mainBtn.disabled = false;
+            mainBtn.innerHTML = 'Start AI Tracking';
+            if (error.name === 'AbortError') {
+                showToast('error', 'Request timed out. Please try again.');
+            } else {
+                showToast('error', 'Failed to connect to server');
+            }
+        } finally {
+            isTrackerActionInProgress = false;
         }
     } else {
         const targetPrice = document.getElementById('targetPrice').value;
@@ -322,10 +352,15 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
     const mainBtn = document.getElementById('mainBtn');
     const priceStep = document.getElementById('priceStep');
     
+    if (isTrackerActionInProgress) {
+        return;
+    }
+    isTrackerActionInProgress = true;
+
     setLoadingState(true, 'Creating tracker...');
     
     try {
-        const response = await fetch(API_BASE_URL + '/api/trackers', {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -339,7 +374,7 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
         });
         
         if (!response.ok) {
-            throw new Error('Failed to create tracker');
+            throw new Error(data.error || 'Failed to create tracker');
         }
         
         const newTracker = {
@@ -356,19 +391,22 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
         trackers.push(newTracker);
         localStorage.setItem('trackers', JSON.stringify(trackers));
         
-        setLoadingState(false);
         showToast('success', 'Tracker created successfully!');
         
         urlInput.value = '';
         priceStep.style.display = 'none';
+        mainBtn.disabled = false;
         mainBtn.innerHTML = 'Start AI Tracking';
         
         renderTrackers();
         updateStats();
         switchView('my-trackers');
     } catch (error) {
-        setLoadingState(false);
         showToast('error', error.message);
+        mainBtn.disabled = false;
+        mainBtn.innerHTML = 'Create Tracker';
+    } finally {
+        isTrackerActionInProgress = false;
     }
 }
 
