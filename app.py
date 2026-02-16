@@ -423,22 +423,14 @@ def signup():
             conn.commit()
             conn.close()
 
-            # Auto-login after signup
-            session['user_id'] = user_id
-            session['username'] = username
-            session['email'] = email
-            session.permanent = True
-            
-            # Create JSON response properly
+            # DO NOT auto-login - user must sign in manually after signup
+            # Create JSON response - redirect to login page after signup
             response_data = jsonify({
                 "success": "Account created successfully!",
-                "redirect": "/dashboard"
+                "redirect": "/login"
             })
-            
-            # Set remember cookie for lifetime login (1 year)
-            response_data.set_cookie('remember_token', remember_token, max_age=60*60*24*365, httponly=True, samesite='Lax')
-            
-            print(f"New user signed up: {email}, remember_token set: {remember_token[:20]}...")
+
+            print(f"New user signed up: {email}")
             return response_data, 201
         except Exception as e:
             print(f"Signup error: {e}")
