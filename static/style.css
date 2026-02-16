@@ -61,7 +61,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    /* padding: 20px; - removed for edge-to-edge */
     color: var(--text-main);
     position: relative;
     overflow-x: hidden;
@@ -164,10 +164,10 @@ body {
 
 .browser-window {
     width: 100%;
-    max-width: 1200px;
-    height: 85vh;
+    max-width: 100%;
+    height: 100vh;
     background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(245, 246, 250, 0.82));
-    border-radius: 16px;
+    border-radius: 0;
     box-shadow: var(--shadow-deep);
     display: flex;
     flex-direction: column;
@@ -1678,85 +1678,6 @@ button span {
 
 .dark-mode .modal {
     background: var(--bg-sidebar);
-}
-
-/* ============================================
-   ADSENSE AD CONTAINERS
-   ============================================ */
-
-.ad-container {
-    width: 100%;
-    margin: 20px 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 90px;
-}
-
-.ad-placeholder {
-    width: 100%;
-    max-width: 728px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 2px dashed #dee2e6;
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.ad-placeholder-content {
-    text-align: center;
-}
-
-.ad-label {
-    display: block;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #86868b;
-    margin-bottom: 8px;
-}
-
-.ad-placeholder-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    color: #adb5bd;
-}
-
-.ad-placeholder-box i {
-    font-size: 2rem;
-}
-
-.ad-placeholder-box span {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #6c757d;
-}
-
-.ad-placeholder-box small {
-    font-size: 0.8rem;
-    color: #adb5bd;
-}
-
-/* Ad in content */
-.ad-in-content {
-    margin: 24px 0;
-    text-align: center;
-}
-
-/* Responsive ads */
-@media (max-width: 728px) {
-    .ad-placeholder {
-        max-width: 100%;
-        min-height: 60px;
-    }
-    
-    .ad-placeholder-box i {
-        font-size: 1.5rem;
-    }
 }
 
 /* ============================================

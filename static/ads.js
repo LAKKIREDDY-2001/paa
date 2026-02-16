@@ -35,8 +35,8 @@ const AdSenseConfig = {
         homePage: '7186431191'
     },
     
-    // Enable/disable ads (set to true to enable real ads)
-    enabled: true,
+    // Enable/disable ads (set to false to disable ads completely)
+    enabled: false,
     
     // Test mode (shows placeholder ads when false)
     testMode: false

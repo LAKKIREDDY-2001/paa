@@ -24,7 +24,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    /* padding: 20px; - removed for edge-to-edge */
     position: relative;
     overflow-x: hidden;
     overflow-y: auto;
@@ -87,10 +87,10 @@ h1, h2, h3 {
 
 .auth-container {
     display: flex;
-    max-width: 1000px;
     width: 100%;
+    max-width: 100%;
     background: var(--auth-glass);
-    border-radius: 24px;
+    border-radius: 0;
     box-shadow: var(--auth-shadow);
     overflow: hidden;
     border: 1px solid var(--auth-border);

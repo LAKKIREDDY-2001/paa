@@ -48,7 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const forgotPasswordForm = document.getElementById('forgot-password-form');
     const resetPasswordForm = document.getElementById('reset-password-form');
-    const forgotForm = document.getElementById('forgot-form');
+    // Also support old 'forgot-form' ID for backwards compatibility
+    const forgotForm = document.getElementById('forgot-form') || document.getElementById('forgot-password-form');
 
     // Prevent ALL form submissions
     document.addEventListener('submit', (e) => {
