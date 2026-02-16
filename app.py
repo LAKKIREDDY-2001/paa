@@ -950,19 +950,48 @@ def scrape_price(soup, site, currency_symbol):
                 if price and 50 < price < 100000:
                     return price
     
-    # Try multiple selectors for Flipkart
+    # Flipkart - improved selectors for current website structure
     if site == 'flipkart':
+        # Try the main price class (current Flipkart structure)
         price_elem = soup.find("div", {"class": "_30jeq3"})
         if price_elem:
             price = parse_price(price_elem.get_text())
-            if price:
+            if price and price > 10:  # Filter out invalid prices
                 return price
         
+        # Try alternative Flipkart selectors
         price_elem = soup.find("div", {"class": "Nx9bqj"})
         if price_elem:
             price = parse_price(price_elem.get_text())
-            if price:
+            if price and price > 10:
                 return price
+        
+        # Try data attributes
+        price_elem = soup.find("div", {"data-id": "price"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price and price > 10:
+                return price
+        
+        # Try finding by style or other attributes
+        price_elem = soup.find(string=re.compile(r'₹[\d,]+'))
+        if price_elem:
+            nums = re.findall(r'₹([\d,]+)', price_elem)
+            for match in nums:
+                price = parse_price(match.replace(',', ''))
+                if price and 100 < price < 100000:  # More specific range for Flipkart
+                    return price
+        
+        # Last resort: search all text for valid price
+        all_text = soup.get_text()
+        prices = re.findall(r'₹\s*([\d,]+)', all_text)
+        valid_prices = []
+        for p in prices:
+            price_val = parse_price(p.replace(',', ''))
+            if price_val and 100 < price_val < 100000:  # Valid clothing price range
+                valid_prices.append(price_val)
+        if valid_prices:
+            return max(valid_prices)  # Return highest price (usually current price)
     
     # Try multiple selectors for Myntra
     if site == 'myntra':
