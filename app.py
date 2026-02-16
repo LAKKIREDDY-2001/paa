@@ -1080,9 +1080,39 @@ def add_no_cache_headers(response):
 
 # ==================== MAIN ====================
 
+def initialize_app():
+    """Lazy initialization function - only runs when needed"""
+    print("=" * 50)
+    print("🚀 AI Price Alert - Starting up...")
+    print("=" * 50)
+    try:
+        init_db()
+        print("✅ Database initialized successfully")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+    print("✅ App ready to serve requests")
+    print("=" * 50)
+    return True
+
+# Initialize lazily - only when first request comes in
+_app_initialized = False
+
+@app.before_request
+def ensure_app_initialized():
+    """Initialize app on first request to avoid startup delays"""
+    global _app_initialized
+    if not _app_initialized:
+        print("🔄 First request received - initializing app...")
+        initialize_app()
+        _app_initialized = True
+
 if __name__ == "__main__":
-    init_db()
+    # Direct run mode (for local development)
+    initialize_app()
     port = int(os.environ.get('PORT', 8081))
+    print(f"🌐 Starting server on http://0.0.0.0:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)
 else:
-    init_db()
+    # Gunicorn/WSGI mode - initialize lazily via before_request hook
+    # Don't run initialization here to avoid startup delays on Render
+    print("📦 Running under WSGI server (Render) - lazy initialization enabled")
