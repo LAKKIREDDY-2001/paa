@@ -429,17 +429,17 @@ def signup():
             session['email'] = email
             session.permanent = True
             
-            response = jsonify({
+            # Create JSON response properly
+            response_data = jsonify({
                 "success": "Account created successfully!",
                 "redirect": "/dashboard"
-            }), 201
+            })
             
             # Set remember cookie for lifetime login (1 year)
-            response = make_response(response)
-            response.set_cookie('remember_token', remember_token, max_age=60*60*24*365, httponly=True, samesite='Lax')
+            response_data.set_cookie('remember_token', remember_token, max_age=60*60*24*365, httponly=True, samesite='Lax')
             
-            print(f"New user signed up: {email}, remember_token set")
-            return response
+            print(f"New user signed up: {email}, remember_token set: {remember_token[:20]}...")
+            return response_data, 201
         except Exception as e:
             print(f"Signup error: {e}")
             return jsonify({"error": "Signup failed. Please try again."}), 500
@@ -580,17 +580,17 @@ def login():
                 session['email'] = user[2]
                 session.permanent = True
                 
-                response = jsonify({
+                # Create JSON response properly
+                response_data = jsonify({
                     "success": "Logged in successfully",
                     "redirect": "/dashboard"
-                }), 200
+                })
                 
                 # Set remember cookie (lasts 1 year)
-                response = make_response(response)
-                response.set_cookie('remember_token', token, max_age=60*60*24*365, httponly=True, samesite='Lax')
+                response_data.set_cookie('remember_token', token, max_age=60*60*24*365, httponly=True, samesite='Lax')
                 
-                print(f"User logged in: {email}, remember_token set")
-                return response
+                print(f"User logged in: {email}, remember_token set: {token[:20]}...")
+                return response_data, 200
             else:
                 conn.close()
                 return jsonify({"error": "Invalid credentials"}), 401

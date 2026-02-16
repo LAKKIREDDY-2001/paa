@@ -225,6 +225,13 @@ async function handleSignup(e) {
         return;
     }
     
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showError('Please enter a valid email address');
+        return;
+    }
+    
     // Show loading state
     signupSubmitting = true;
     if (submitBtn) {
@@ -243,19 +250,28 @@ async function handleSignup(e) {
             },
             body: JSON.stringify({ username, email, password, phone })
         });
-        const rawText = await response.text();
-        let data = {};
-        try {
-            data = rawText ? JSON.parse(rawText) : {};
-        } catch (parseError) {
-            data = { error: rawText || 'Unexpected server response' };
+        
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            throw new Error(text || 'Unexpected server response');
         }
         
         if (response.ok) {
-            showToast('success', 'Account created successfully! Redirecting to login...');
+            // Show success message
+            showToast('success', 'Account created successfully!');
+            
+            // Check for redirect in response or default to dashboard
+            const redirectUrl = data.redirect || '/dashboard';
+            
+            // Delay slightly to show the toast
             setTimeout(() => {
-                window.location.href = '/login';
-            }, 1500);
+                window.location.href = redirectUrl;
+            }, 1000);
             return;
         } else {
             showError(data.error || 'Failed to create account. Please try again.');
@@ -704,8 +720,6 @@ async function handleLogin(e) {
     const email = emailInput?.value;
     const passwordInput = document.getElementById('login-password') || document.getElementById('password');
     const password = passwordInput?.value;
-    const rememberCheckbox = document.getElementById('remember');
-    const remember = rememberCheckbox ? rememberCheckbox.checked : true;
     const errorMessage = document.getElementById('error-message');
     // Get button by ID directly - more reliable
     const submitBtn = document.getElementById('login-btn');
@@ -713,6 +727,13 @@ async function handleLogin(e) {
     // Validate required fields
     if (!email || !password) {
         showError('Please enter email and password');
+        return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showError('Please enter a valid email address');
         return;
     }
     
@@ -732,22 +753,29 @@ async function handleLogin(e) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password, remember })
+            body: JSON.stringify({ email, password, remember: true })
         });
-        const rawText = await response.text();
-        let data = {};
-        try {
-            data = rawText ? JSON.parse(rawText) : {};
-        } catch (parseError) {
-            data = { error: rawText || 'Unexpected server response' };
+        
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            throw new Error(text || 'Unexpected server response');
         }
         
         if (response.ok) {
             // Success - redirect to dashboard
-            showToast('success', 'Login successful! Redirecting...');
+            showToast('success', 'Login successful!');
+            
+            // Check for redirect in response or default to dashboard
+            const redirectUrl = data.redirect || '/dashboard';
+            
             setTimeout(() => {
-                window.location.href = '/dashboard';
-            }, 1500);
+                window.location.href = redirectUrl;
+            }, 1000);
             return;
         } else {
             showError(data.error || 'Invalid credentials. Please try again.', errorMessage?.id || 'error-message');
