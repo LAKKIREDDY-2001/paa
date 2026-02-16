@@ -25,3 +25,14 @@
   - auth.css: Removed body padding, changed auth-container to full width
 - **Status**: ✅ COMPLETED - No ads shown, pages now display edge-to-edge
 
+### 5. Session & Data Persistence
+- **Lifetime Login**: Users stay logged in forever after signup/login
+  - Added remember_token to users table
+  - Signup auto-logs in with lifetime token
+  - Login with "Remember me" creates 1-year token
+  - Token stored in database and cookie
+- **Database Persistence**: Data now saves to persistent storage
+  - Improved database path resolution for Render
+  - Set DATABASE_PATH env var for production
+- **Status**: ✅ COMPLETED - Users and data persist forever
+
