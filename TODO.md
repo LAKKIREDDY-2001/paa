@@ -14,13 +14,37 @@ Fix the about:blank issue that's causing the page to show blank in the browser.
 - [x] 5. Test the changes locally
 - [x] 6. Push changes to GitHub
 
+## Session Persistence Fix - COMPLETED ✓
+
+### Issues Fixed
+
+1. **Database Path Resolution** - The database was sometimes stored in non-persistent locations like /tmp, causing user data loss on restart
+2. **Remember Token** - Was not being properly generated/stored in some cases
+3. **Session Restoration** - Was failing silently due to missing error handling
+
+### Fixes Applied
+
+**app.py:**
+- Fixed database path resolution to use project directory for local persistence
+- Added Flask-Session for better session management
+- Made remember_token work by default (always set on login/signup)
+- Improved error handling in login/signup flows
+- Added debug logging for session restoration
+- Added session.permanent = True when restoring from remember_token
+
+**requirements.txt:**
+- Added Flask-Session dependency
+
+**.gitignore:**
+- Added flask_session/ to ignore session files
+
 ## Issues Identified and Fixed
 
 1. **Complex window.open override** - The override code using Object.getOwnPropertyDescriptor on Location.prototype could fail in some browsers/environments
 2. **Firebase bundle issues** - Large bundle might fail to load in some environments
 3. **Edge case handling** - Null/undefined URL values not handled properly in all paths
 
-## Fixes Applied
+## Fixes Applied (Original)
 
 ### script.js
 - Simplified window.open override using IIFE with try-catch
