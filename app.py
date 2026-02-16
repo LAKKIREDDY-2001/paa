@@ -687,6 +687,35 @@ def error_page():
 
 # ==================== API ROUTES ====================
 
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint for debugging deployment issues"""
+    import platform
+    import sys
+    
+    health = {
+        "status": "ok",
+        "message": "Server is running",
+        "database": "connected" if os.path.exists(DATABASE) else "not_found",
+        "database_path": DATABASE,
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Try to connect to database
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+        health["database_tables"] = [t[0] for t in tables]
+        conn.close()
+    except Exception as e:
+        health["database_error"] = str(e)
+    
+    return jsonify(health)
+
 @app.route('/api/user', methods=['GET'])
 def get_user():
     if 'user_id' not in session:

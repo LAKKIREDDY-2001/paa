@@ -1,26 +1,41 @@
-# TODO: Fix AdSense Integration and CSS Issues
+# Fix about:blank Issue - TODO
 
-## Completed
-- [x] ads.txt already exists with correct content
-- [x] AdSense added to home.html
-- [x] AdSense added to index.html
-- [x] AdSense added to login.html
-- [x] AdSense added to signup.html
+## Task
+Fix the about:blank issue that's causing the page to show blank in the browser.
 
-## Pending - Add AdSense to remaining templates
-- [ ] about.html
-- [ ] blog.html
-- [ ] blog_amazon_history.html
-- [ ] blog_best_tools.html
-- [ ] blog_save_money.html
-- [ ] blog_track_prices.html
-- [ ] contact.html
-- [ ] error.html
-- [ ] forgot-password.html
-- [ ] privacy.html
-- [ ] reset-password.html
-- [ ] terms.html
+## Steps to Complete
 
-## Pending - Fix CSS Issues
-- [ ] static/style.css - Fix empty rulesets (lines 447, 478, 962, 1011, 1150, 1492, 1730)
+- [x] 1. Analyze the codebase and identify root causes
+- [x] 2. Fix script.js - simplify window.open override and add error handling
+- [x] 3. Fix auth.js - similar improvements  
+- [x] 4. Add diagnostic endpoint in app.py
+- [x] 5. Test the changes locally
+
+## Issues Identified
+
+1. **Complex window.open override** - The override code using Object.getOwnPropertyDescriptor on Location.prototype could fail in some browsers/environments
+2. **Firebase bundle issues** - Large bundle might fail to load in some environments
+3. **Edge case handling** - Null/undefined URL values not handled properly in all paths
+
+## Fixes Applied
+
+### script.js
+- Simplified window.open override using IIFE with try-catch
+- Added safe getApiBaseUrl with error handling
+- Added navigateTo function for safer navigation
+- Improved error handling throughout
+
+### auth.js
+- Same improvements as script.js
+- Added navigateTo function for safer navigation
+
+### app.py
+- Added /api/health diagnostic endpoint for debugging
+- Returns database status, tables, and system info
+
+## Testing
+- App imports successfully
+- All routes registered correctly
+- Home page returns 200 status code
+- Database initialized correctly
 

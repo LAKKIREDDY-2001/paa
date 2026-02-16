@@ -1,43 +1,83 @@
 // Auth JavaScript - Handles Signup, Login, and Password Reset
+// FIXED: Simplified and more robust to prevent about:blank issues
 
-// CRITICAL: Override window.open to prevent about:blank
-const originalWindowOpen = window.open;
-window.open = function(url, target, features) {
-    console.log('window.open called:', url, target);
-    // Prevent about:blank
-    if (!url || url === '' || url === 'about:blank' || url === 'null' || url === 'undefined') {
-        console.error('Blocked window.open with invalid URL:', url);
-        return null;
+// Safe API_BASE_URL - fallback to empty string if window.location is not available
+const getApiBaseUrl = () => {
+    try {
+        return window.location && window.location.origin ? window.location.origin : '';
+    } catch (e) {
+        console.error('Error getting API base URL:', e);
+        return '';
     }
-    return originalWindowOpen.call(window, url, target, features);
 };
+const API_BASE_URL = getApiBaseUrl();
 
-// Also override location.href assignments
-const originalLocationHref = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
-if (originalLocationHref) {
-    const originalSet = originalLocationHref.set;
-    Object.defineProperty(window.Location.prototype, 'href', {
-        set: function(value) {
-            console.log('Setting location.href:', value);
-            if (value && value !== 'about:blank') {
-                originalSet.call(this, value);
+// Safe window.open wrapper - prevents about:blank
+// Override window.open with safer version
+(function() {
+    try {
+        const originalWindowOpen = window.open;
+        window.open = function(url, target, features) {
+            try {
+                // Validate URL before opening
+                if (!url || typeof url !== 'string') {
+                    console.error('Invalid URL: not a string or empty');
+                    return null;
+                }
+                
+                const trimmed = url.trim().toLowerCase();
+                
+                // Block invalid URLs
+                const invalidPatterns = ['about:blank', 'about:', 'null', 'undefined', 'javascript:', ''];
+                if (invalidPatterns.includes(trimmed)) {
+                    console.error('Blocked window.open with invalid URL:', url);
+                    return null;
+                }
+                
+                // Block URLs starting with invalid protocols
+                if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) {
+                    console.error('Blocked window.open with dangerous URL:', url);
+                    return null;
+                }
+                
+                return originalWindowOpen.call(window, url, target, features);
+            } catch (e) {
+                console.error('Error in safe window.open:', e);
+                return null;
             }
-        },
-        get: originalLocationHref.get
-    });
-}
+        };
+    } catch (e) {
+        console.error('Could not override window.open:', e);
+    }
+})();
+
+// Safe navigation wrapper
+const navigateTo = function(url) {
+    try {
+        if (!url || typeof url !== 'string') {
+            console.error('Invalid navigation URL:', url);
+            return;
+        }
+        
+        const trimmed = url.trim().toLowerCase();
+        
+        // Block invalid URLs
+        if (trimmed === 'about:blank' || trimmed === 'null' || trimmed === 'undefined' || trimmed === '') {
+            console.error('Blocked navigation to invalid URL:', url);
+            return;
+        }
+        
+        window.location.href = url;
+    } catch (e) {
+        console.error('Error navigating:', e);
+    }
+};
 
 let signupToken = null;
 let emailVerified = false;
 let phoneVerified = false;
 let signupSubmitting = false;
 let loginSubmitting = false;
-
-// Backend API configuration
-const getApiBaseUrl = () => {
-    return window.location.origin;
-};
-const API_BASE_URL = getApiBaseUrl();
 
 // Global form submission interceptor - prevent any form from submitting normally
 document.addEventListener('DOMContentLoaded', () => {

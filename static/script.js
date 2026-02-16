@@ -1,42 +1,82 @@
 // Dashboard JavaScript - Main app functionality with celebration
+// FIXED: Simplified and more robust to prevent about:blank issues
 let trackers = [];
 let currentFilter = 'all';
 let currentTracker = null;
 let celebrationTracker = null;
 let isTrackerActionInProgress = false;
 
-// CRITICAL: Override window.open to prevent about:blank
-const originalWindowOpen = window.open;
-window.open = function(url, target, features) {
-    console.log('window.open called:', url, target);
-    // Prevent about:blank
-    if (!url || url === '' || url === 'about:blank' || url === 'null' || url === 'undefined') {
-        console.error('Blocked window.open with invalid URL:', url);
-        return null;
-    }
-    return originalWindowOpen.call(window, url, target, features);
-};
-
-// Also override location.href assignments
-const originalLocationHref = Object.getOwnPropertyDescriptor(window.Location.prototype, 'href');
-if (originalLocationHref) {
-    const originalSet = originalLocationHref.set;
-    Object.defineProperty(window.Location.prototype, 'href', {
-        set: function(value) {
-            console.log('Setting location.href:', value);
-            if (value && value !== 'about:blank') {
-                originalSet.call(this, value);
-            }
-        },
-        get: originalLocationHref.get
-    });
-}
-
-// Backend API configuration
+// Safe API_BASE_URL - fallback to empty string if window.location is not available
 const getApiBaseUrl = () => {
-    return window.location.origin;
+    try {
+        return window.location && window.location.origin ? window.location.origin : '';
+    } catch (e) {
+        console.error('Error getting API base URL:', e);
+        return '';
+    }
 };
 const API_BASE_URL = getApiBaseUrl();
+
+// Safe window.open wrapper - prevents about:blank
+// Override window.open with safer version
+(function() {
+    try {
+        const originalWindowOpen = window.open;
+        window.open = function(url, target, features) {
+            try {
+                // Validate URL before opening
+                if (!url || typeof url !== 'string') {
+                    console.error('Invalid URL: not a string or empty');
+                    return null;
+                }
+                
+                const trimmed = url.trim().toLowerCase();
+                
+                // Block invalid URLs
+                const invalidPatterns = ['about:blank', 'about:', 'null', 'undefined', 'javascript:', ''];
+                if (invalidPatterns.includes(trimmed)) {
+                    console.error('Blocked window.open with invalid URL:', url);
+                    return null;
+                }
+                
+                // Block URLs starting with invalid protocols
+                if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) {
+                    console.error('Blocked window.open with dangerous URL:', url);
+                    return null;
+                }
+                
+                return originalWindowOpen.call(window, url, target, features);
+            } catch (e) {
+                console.error('Error in safe window.open:', e);
+                return null;
+            }
+        };
+    } catch (e) {
+        console.error('Could not override window.open:', e);
+    }
+})();
+
+// Also add safe location wrapper
+const navigateTo = function(url) {
+    try {
+        if (!url || typeof url !== 'string') {
+            console.error('Invalid navigation URL:', url);
+            return;
+        }
+        
+        const trimmed = url.trim().toLowerCase();
+        
+        // Block invalid URLs
+        if (trimmed === 'about:blank' || trimmed === 'null' || trimmed === 'undefined' || trimmed === '') {
+            console.error('Blocked navigation to invalid URL:', url);
+            return;
+        }
+        
+        window.location.href = url;
+    } catch (e) {
+        console.error('Error navigating:', e);
+    }
+};
 
 async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 15000) {
     const controller = new AbortController();
