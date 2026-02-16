@@ -42,14 +42,17 @@ def make_session_permanent():
         session.permanent = True
 
 def resolve_database_path():
+    # Check for environment variable first - this takes priority
     configured_path = os.environ.get('DATABASE_PATH')
     if configured_path:
         db_dir = os.path.dirname(configured_path) or '.'
         os.makedirs(db_dir, exist_ok=True)
         if os.access(db_dir, os.W_OK):
+            print(f"Using database path from environment: {configured_path}")
             return configured_path
 
-    # Try Render persistent disk mount path first
+    # Render persistent disk mount paths - check these FIRST for persistence
+    # These paths persist across deploys/restarts on Render
     render_persistent_paths = [
         '/var/data/database.db',
         '/opt/render/project/src/database.db',
@@ -57,27 +60,34 @@ def resolve_database_path():
     ]
     for render_path in render_persistent_paths:
         render_dir = os.path.dirname(render_path)
-        if os.path.isdir(render_dir) and os.access(render_dir, os.W_OK):
-            os.makedirs(render_dir, exist_ok=True)
-            return render_path
-
-    # Try /data directory (common in containerized deployments)
-    data_dir = '/data'
-    if os.path.isdir(data_dir) or os.access(os.path.dirname(data_dir), os.W_OK):
         try:
-            os.makedirs(data_dir, exist_ok=True)
-            if os.access(data_dir, os.W_OK):
-                return os.path.join(data_dir, 'database.db')
+            os.makedirs(render_dir, exist_ok=True)
+            if os.access(render_dir, os.W_OK):
+                print(f"Using Render persistent database: {render_path}")
+                return render_path
         except:
-            pass
+            continue
 
-    # Fallback to local path in project directory
+    # Try /data directory (common in containerized deployments like Railway, etc.)
+    data_dir = '/data'
+    try:
+        os.makedirs(data_dir, exist_ok=True)
+        if os.access(data_dir, os.W_OK):
+            db_path = os.path.join(data_dir, 'database.db')
+            print(f"Using /data directory database: {db_path}")
+            return db_path
+    except:
+        pass
+
+    # For local development - use project directory
     local_path = os.path.join(os.getcwd(), 'database.db')
     local_dir = os.path.dirname(local_path) or '.'
     if os.access(local_dir, os.W_OK):
+        print(f"Using local database: {local_path}")
         return local_path
 
-    # Last resort: tmp directory
+    # Last resort: tmp directory (NOT PERSISTENT - data will be lost on restart)
+    print("WARNING: Using tmp directory - data will NOT persist across restarts!")
     return '/tmp/database.db'
 
 DATABASE = resolve_database_path()
@@ -236,12 +246,13 @@ def send_password_reset_email(email, reset_token):
 # ==================== DATABASE ====================
 
 def init_db():
-    global DATABASE
+    """Initialize database - uses the already resolved DATABASE path"""
     try:
         conn = sqlite3.connect(DATABASE)
-    except sqlite3.OperationalError:
-        # Render instances may not allow writes in the app directory.
-        DATABASE = '/tmp/database.db'
+    except sqlite3.OperationalError as e:
+        # Log the error but don't change the database path
+        print(f"Database connection error: {e}")
+        # Try once more with the same path before failing
         conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
     
