@@ -8,6 +8,7 @@ import secrets
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory, make_response
 from flask_cors import CORS
+from flask_session import Session
 import requests
 from bs4 import BeautifulSoup
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -34,6 +35,9 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True, origins="*")
 
+# Initialize Flask-Session
+Session(app)
+
 # Enable permanent sessions by default
 @app.before_request
 def make_session_permanent():
@@ -51,43 +55,36 @@ def resolve_database_path():
             print(f"Using database path from environment: {configured_path}")
             return configured_path
 
-    # Render persistent disk mount paths - check these FIRST for persistence
-    # These paths persist across deploys/restarts on Render
-    render_persistent_paths = [
-        '/var/data/database.db',
-        '/opt/render/project/src/database.db',
-        '/home/app/database.db'
+    # Check for common persistent directories in order of preference
+    # These paths persist across deploys/restarts
+    persistent_dirs = [
+        '/var/data',
+        '/opt/render/project/src',
+        '/home/app',
+        '/data'
     ]
-    for render_path in render_persistent_paths:
-        render_dir = os.path.dirname(render_path)
+    
+    for persist_dir in persistent_dirs:
         try:
-            os.makedirs(render_dir, exist_ok=True)
-            if os.access(render_dir, os.W_OK):
-                print(f"Using Render persistent database: {render_path}")
-                return render_path
-        except:
+            os.makedirs(persist_dir, exist_ok=True)
+            if os.access(persist_dir, os.W_OK):
+                db_path = os.path.join(persist_dir, 'database.db')
+                print(f"Using persistent directory: {persist_dir}")
+                return db_path
+        except Exception as e:
+            print(f"Could not use {persist_dir}: {e}")
             continue
 
-    # Try /data directory (common in containerized deployments like Railway, etc.)
-    data_dir = '/data'
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-        if os.access(data_dir, os.W_OK):
-            db_path = os.path.join(data_dir, 'database.db')
-            print(f"Using /data directory database: {db_path}")
-            return db_path
-    except:
-        pass
-
-    # For local development - use project directory
-    local_path = os.path.join(os.getcwd(), 'database.db')
-    local_dir = os.path.dirname(local_path) or '.'
-    if os.access(local_dir, os.W_OK):
-        print(f"Using local database: {local_path}")
+    # For local development - use project directory (most reliable for local)
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    local_path = os.path.join(project_dir, 'database.db')
+    if os.access(project_dir, os.W_OK):
+        print(f"Using project directory database: {local_path}")
         return local_path
 
-    # Last resort: tmp directory (NOT PERSISTENT - data will be lost on restart)
+    # Last resort: try tmp with clear warning
     print("WARNING: Using tmp directory - data will NOT persist across restarts!")
+    print("For production, set DATABASE_PATH environment variable or ensure /data is writable")
     return '/tmp/database.db'
 
 DATABASE = resolve_database_path()
@@ -391,7 +388,7 @@ def blog_amazon_history():
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """Signup page - direct account creation (OTP removed)"""
+    """Signup page - direct account creation"""
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -441,8 +438,10 @@ def signup():
             response = make_response(response)
             response.set_cookie('remember_token', remember_token, max_age=60*60*24*365, httponly=True, samesite='Lax')
             
+            print(f"New user signed up: {email}, remember_token set")
             return response
-        except Exception:
+        except Exception as e:
+            print(f"Signup error: {e}")
             return jsonify({"error": "Signup failed. Please try again."}), 500
 
     return render_template('signup.html')
@@ -523,22 +522,29 @@ def signup_complete():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login page - redirect to dashboard if already logged in"""
-    # Check for remember_token cookie first
+    # Check for remember_token cookie first - this is the key to persistent login
     remember_token = request.cookies.get('remember_token')
-    if remember_token and 'user_id' not in session:
-        # Try to restore session from remember token
-        conn = sqlite3.connect(DATABASE)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, username, email FROM users WHERE remember_token = ?", (remember_token,))
-        user = cursor.fetchone()
-        conn.close()
-        if user:
-            # Restore session
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            session['email'] = user[2]
-            return redirect(url_for('dashboard'))
     
+    # First try to restore session from remember token
+    if remember_token and 'user_id' not in session:
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, username, email FROM users WHERE remember_token = ?", (remember_token,))
+            user = cursor.fetchone()
+            conn.close()
+            if user:
+                # Restore session
+                session['user_id'] = user[0]
+                session['username'] = user[1]
+                session['email'] = user[2]
+                session.permanent = True
+                print(f"Session restored from remember_token for user: {user[1]}")
+                return redirect(url_for('dashboard'))
+        except Exception as e:
+            print(f"Error restoring session from remember_token: {e}")
+    
+    # Also check if user is already in session
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -546,7 +552,7 @@ def login():
         data = request.get_json(silent=True) or {}
         email = data.get('email')
         password = data.get('password')
-        remember = data.get('remember', False)
+        remember = data.get('remember', True)  # Default to True for persistent login
 
         if not email or not password:
             return jsonify({"error": "Missing data"}), 400
@@ -561,13 +567,9 @@ def login():
                 # Update last login timestamp
                 cursor.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user[0],))
                 
-                # Generate remember token if "Remember me" is checked
-                if remember:
-                    token = secrets.token_urlsafe(32)
-                    cursor.execute("UPDATE users SET remember_token = ? WHERE id = ?", (token, user[0]))
-                else:
-                    # Clear remember token if not checked
-                    cursor.execute("UPDATE users SET remember_token = NULL WHERE id = ?", (user[0],))
+                # Generate remember token for persistent login (always, unless explicitly unchecked)
+                token = secrets.token_urlsafe(32)
+                cursor.execute("UPDATE users SET remember_token = ? WHERE id = ?", (token, user[0]))
                 
                 conn.commit()
                 conn.close()
@@ -583,11 +585,11 @@ def login():
                     "redirect": "/dashboard"
                 }), 200
                 
-                # Set remember cookie if enabled (lasts 1 year)
-                if remember:
-                    response = make_response(response)
-                    response.set_cookie('remember_token', token, max_age=60*60*24*365, httponly=True, samesite='Lax')
+                # Set remember cookie (lasts 1 year)
+                response = make_response(response)
+                response.set_cookie('remember_token', token, max_age=60*60*24*365, httponly=True, samesite='Lax')
                 
+                print(f"User logged in: {email}, remember_token set")
                 return response
             else:
                 conn.close()

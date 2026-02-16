@@ -1,5 +1,6 @@
 Flask
 Flask-Cors
+Flask-Session
 requests
 beautifulsoup4
 Werkzeug
