@@ -444,9 +444,7 @@ button span {
 
 .btn-icon { font-size: 1.2rem; transition: var(--transition); }
 /* Disabled icon animation to prevent cursor flicker */
-.action-btn:hover .btn-icon {
-    /* Icon animation disabled to prevent cursor flicker */
-}
+
 
 /* ============================================
    SUPPORTED SITES
@@ -475,9 +473,7 @@ button span {
     transition: var(--transition);
 }
 
-.supported-sites span:hover {
-    /* Transform disabled to prevent cursor flicker */
-}
+
 .supported-sites i { font-size: 1.3rem; color: var(--accent-orange); }
 .supported-sites .brand-logo {
     width: 18px;
@@ -959,9 +955,7 @@ button span {
     transition: var(--transition);
 }
 
-.product-preview:hover {
-    /* Transform disabled to prevent cursor flicker */
-}
+
 
 .product-image {
     width: 100px;
@@ -1008,9 +1002,7 @@ button span {
     transition: var(--transition);
 }
 
-.price-box:hover {
-    /* Transform disabled to prevent cursor flicker */
-}
+
 
 .price-box.original {
     background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
@@ -1147,9 +1139,7 @@ button span {
     transition: var(--transition);
 }
 
-.detail-card:hover {
-    /* Transform disabled to prevent cursor flicker */
-}
+
 
 .detail-icon {
     width: 48px;
@@ -1489,9 +1479,7 @@ button span {
     transition: transform 0.3s ease;
 }
 
-.card-3d:hover {
-    /* 3D transform disabled to prevent cursor flicker */
-}
+
 
 .glow-effect {
     position: relative;
@@ -1727,9 +1715,7 @@ button span {
     transition: var(--transition);
 }
 
-.settings-section:hover {
-    /* Transform disabled to prevent cursor flicker */
-}
+
 
 .settings-section h3 {
     font-size: 1.1rem;
