@@ -6,7 +6,7 @@ import string
 import json
 import secrets
 from concurrent.futures import ThreadPoolExecutor
-from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory
+from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory, make_response
 from flask_cors import CORS
 import requests
 from bs4 import BeautifulSoup
@@ -267,6 +267,7 @@ def init_db():
             phone_verified INTEGER DEFAULT 0,
             two_factor_enabled INTEGER DEFAULT 0,
             two_factor_method TEXT DEFAULT 'none',
+            remember_token TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP
         )
@@ -414,17 +415,33 @@ def signup():
                 conn.close()
                 return jsonify({"error": "Email already exists"}), 409
 
+            # Generate remember token for lifetime login
+            remember_token = secrets.token_urlsafe(32)
+            
             cursor.execute("""
-                INSERT INTO users (username, email, password, phone, email_verified)
-                VALUES (?, ?, ?, ?, ?)
-            """, (username, email, generate_password_hash(password), phone, 1))
+                INSERT INTO users (username, email, password, phone, email_verified, remember_token)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (username, email, generate_password_hash(password), phone, 1, remember_token))
+            user_id = cursor.lastrowid
             conn.commit()
             conn.close()
 
-            return jsonify({
+            # Auto-login after signup
+            session['user_id'] = user_id
+            session['username'] = username
+            session['email'] = email
+            session.permanent = True
+            
+            response = jsonify({
                 "success": "Account created successfully!",
-                "message": "Redirecting to login..."
+                "redirect": "/dashboard"
             }), 201
+            
+            # Set remember cookie for lifetime login (1 year)
+            response = make_response(response)
+            response.set_cookie('remember_token', remember_token, max_age=60*60*24*365, httponly=True, samesite='Lax')
+            
+            return response
         except Exception:
             return jsonify({"error": "Signup failed. Please try again."}), 500
 
@@ -506,6 +523,22 @@ def signup_complete():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login page - redirect to dashboard if already logged in"""
+    # Check for remember_token cookie first
+    remember_token = request.cookies.get('remember_token')
+    if remember_token and 'user_id' not in session:
+        # Try to restore session from remember token
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, email FROM users WHERE remember_token = ?", (remember_token,))
+        user = cursor.fetchone()
+        conn.close()
+        if user:
+            # Restore session
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            session['email'] = user[2]
+            return redirect(url_for('dashboard'))
+    
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -513,6 +546,7 @@ def login():
         data = request.get_json(silent=True) or {}
         email = data.get('email')
         password = data.get('password')
+        remember = data.get('remember', False)
 
         if not email or not password:
             return jsonify({"error": "Missing data"}), 400
@@ -524,25 +558,42 @@ def login():
             user = cursor.fetchone()
 
             if user and check_password_hash(user[3], password):
-                # Update last login timestamp before closing connection
+                # Update last login timestamp
                 cursor.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user[0],))
+                
+                # Generate remember token if "Remember me" is checked
+                if remember:
+                    token = secrets.token_urlsafe(32)
+                    cursor.execute("UPDATE users SET remember_token = ? WHERE id = ?", (token, user[0]))
+                else:
+                    # Clear remember token if not checked
+                    cursor.execute("UPDATE users SET remember_token = NULL WHERE id = ?", (user[0],))
+                
                 conn.commit()
                 conn.close()
                 
+                # Set session
                 session['user_id'] = user[0]
-                session['remember_me'] = data.get('remember', False)
-                # Extend session if remember me is checked
-                if session.get('remember_me'):
-                    session.permanent = True
-                return jsonify({
+                session['username'] = user[1]
+                session['email'] = user[2]
+                session.permanent = True
+                
+                response = jsonify({
                     "success": "Logged in successfully",
                     "redirect": "/dashboard"
                 }), 200
+                
+                # Set remember cookie if enabled (lasts 1 year)
+                if remember:
+                    response = make_response(response)
+                    response.set_cookie('remember_token', token, max_age=60*60*24*365, httponly=True, samesite='Lax')
+                
+                return response
             else:
                 conn.close()
                 return jsonify({"error": "Invalid credentials"}), 401
-        except Exception:
-            return jsonify({"error": "Login failed. Please try again."}), 500
+        except Exception as e:
+            return jsonify({"error": f"Login failed: {str(e)}"}), 500
     
     return render_template('login.html')
 
