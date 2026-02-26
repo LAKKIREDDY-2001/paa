@@ -22,6 +22,20 @@ const nativeWindowOpen = (window && typeof window.open === 'function')
     ? window.open.bind(window)
     : null;
 
+// Block only invalid blank opens globally (including library calls).
+if (nativeWindowOpen) {
+    window.open = function(url, target, features) {
+        const u = typeof url === 'string' ? url.trim().toLowerCase() : '';
+        if (!u || u === 'about:blank' || u === 'about:' || u === 'null' || u === 'undefined') {
+            return null;
+        }
+        if (u.startsWith('javascript:') || u.startsWith('data:') || u.startsWith('vbscript:')) {
+            return null;
+        }
+        return nativeWindowOpen(url, target, features);
+    };
+}
+
 // Also add safe location wrapper
 const navigateTo = function(url) {
     try {
