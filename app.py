@@ -1295,7 +1295,13 @@ def serve_static(filename):
 @app.route('/robots.txt')
 def robots_txt():
     host = request.host_url.rstrip('/')
-    content = f"""User-agent: *
+    content = f"""User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: *
 Allow: /
 
 Sitemap: {host}/sitemap.xml
@@ -1362,6 +1368,19 @@ def catch_all(path):
 
 @app.after_request
 def add_no_cache_headers(response):
+    # Explicitly allow snippets/indexing for public pages.
+    path = request.path
+    indexable = {
+        '/', '/home', '/about', '/contact', '/privacy', '/terms', '/blog',
+        '/blog/how-to-track-product-prices-online',
+        '/blog/best-price-alert-tools-india',
+        '/blog/save-money-price-trackers',
+        '/blog/amazon-price-history',
+        '/signup', '/login', '/dashboard'
+    }
+    if path in indexable:
+        response.headers['X-Robots-Tag'] = 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+
     if response.content_type and response.content_type.startswith('text/html'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
