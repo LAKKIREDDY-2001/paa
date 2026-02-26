@@ -13,6 +13,7 @@ try:
     from flask_session import Session
 except ImportError:
     Session = None
+from werkzeug.middleware.proxy_fix import ProxyFix
 import requests
 from bs4 import BeautifulSoup
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -23,28 +24,29 @@ import smtplib
 
 app = Flask(__name__)
 executor = ThreadPoolExecutor(max_workers=3)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+IS_PRODUCTION = os.environ.get('APP_ENV', '').lower() in ['production', 'prod'] or \
+    os.environ.get('FLASK_ENV', '').lower() == 'production'
 
 # Use a consistent secret key - generate once and store, or use environment variable
 # This prevents sessions from being invalidated on app restart
 app.secret_key = os.environ.get('SECRET_KEY', 'price-alerter-secret-key-2024-change-in-production')
+if IS_PRODUCTION and not os.environ.get('SECRET_KEY'):
+    print("WARNING: SECRET_KEY is not set in production. Set SECRET_KEY environment variable.")
 
 # Session configuration - optimized for persistent login
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Changed from 'Strict' for better compatibility
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_TYPE'] = os.environ.get('SESSION_TYPE', 'filesystem')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # 30 days persistent session
 app.config['SESSION_COOKIE_NAME'] = 'price_alerter_session'  # Custom session cookie name
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_KEY_PREFIX'] = 'price_alerter:'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True, origins="*")
-
-# Initialize Flask-Session when available; fallback to Flask signed cookies.
-if Session is not None:
-    Session(app)
-else:
-    app.config.pop('SESSION_TYPE', None)
-    print("WARNING: flask_session not installed; using default Flask session backend.")
 
 # Enable permanent sessions by default
 @app.before_request
@@ -103,6 +105,19 @@ def resolve_database_path():
 
 DATABASE = resolve_database_path()
 print(f"Using SQLite database: {DATABASE}")
+
+if app.config.get('SESSION_TYPE') == 'filesystem':
+    default_session_dir = os.path.join(os.path.dirname(DATABASE), 'flask_session')
+    app.config['SESSION_FILE_DIR'] = os.environ.get('SESSION_FILE_DIR', default_session_dir)
+    os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+    print(f"Using session file directory: {app.config['SESSION_FILE_DIR']}")
+
+# Initialize Flask-Session when available; fallback to Flask signed cookies.
+if Session is not None:
+    Session(app)
+else:
+    app.config.pop('SESSION_TYPE', None)
+    print("WARNING: flask_session not installed; using default Flask session backend.")
 
 # Email Configuration
 def load_email_config():
@@ -606,7 +621,7 @@ def login():
                         max_age=60 * 60 * 24 * 365,
                         httponly=True,
                         samesite='Lax',
-                        secure=request.is_secure
+                        secure=app.config.get('SESSION_COOKIE_SECURE', False)
                     )
                 else:
                     response_data.delete_cookie('remember_token')

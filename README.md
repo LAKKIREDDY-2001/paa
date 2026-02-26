@@ -96,6 +96,23 @@ price-alerter/
 
 ## 🔧 Configuration
 
+### Production Session & Login Persistence
+
+Set these environment variables in deployment so customer login/signup data stays persistent:
+
+```bash
+APP_ENV=production
+SECRET_KEY=use-a-long-random-secret-key
+DATABASE_PATH=/var/data/database.db
+SESSION_TYPE=filesystem
+SESSION_FILE_DIR=/var/data/flask_session
+```
+
+Notes:
+- `SECRET_KEY` must stay constant across deploys/restarts.
+- `DATABASE_PATH` and `SESSION_FILE_DIR` must point to a persistent volume.
+- App automatically enables secure cookies in production (`APP_ENV=production`).
+
 ### Firebase Setup
 
 1. Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
@@ -170,4 +187,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Made with ❤️ for smart shoppers**
-
