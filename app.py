@@ -1301,7 +1301,10 @@ def serve_static(filename):
 @app.route('/robots.txt')
 def robots_txt():
     host = request.host_url.rstrip('/')
-    content = f"""User-agent: Googlebot
+    content = f"""User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: Googlebot
 Allow: /
 
 User-agent: Googlebot-Image
@@ -1315,6 +1318,11 @@ Sitemap: {host}/sitemap.xml
     response = make_response(content)
     response.headers['Content-Type'] = 'text/plain; charset=utf-8'
     return response
+
+
+@app.route('/ads.txt')
+def ads_txt():
+    return send_from_directory('.', 'ads.txt', mimetype='text/plain')
 
 
 @app.route('/sitemap.xml')
