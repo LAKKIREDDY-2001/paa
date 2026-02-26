@@ -227,11 +227,20 @@ body {
 .user-menu { display: flex; align-items: center; gap: 12px; }
 .user-menu span { font-size: 13px; color: var(--text-secondary); }
 .logout-btn {
+    border: none;
+    background: rgba(255, 95, 87, 0.14);
     color: var(--danger);
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
     transition: var(--transition);
 }
-.logout-btn:hover { transform: scale(1.1); }
+.logout-btn:hover { transform: scale(1.06); background: rgba(255, 95, 87, 0.22); }
 
 /* ============================================
    VIEWPORT & SIDEBAR

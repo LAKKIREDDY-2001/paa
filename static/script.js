@@ -91,6 +91,18 @@ function initDashboardApp() {
     addManualRefreshButton();
 }
 
+function handleLogout() {
+    const doRedirect = () => {
+        const ts = Date.now();
+        window.location.assign('/logout?t=' + ts);
+    };
+
+    // Try API call first so cookies/session are cleared even in strict browsers.
+    fetch('/logout', { method: 'GET', credentials: 'include', cache: 'no-store' })
+        .catch(() => {})
+        .finally(doRedirect);
+}
+
 function openSafeUrl(url, newTab = true) {
     // Validate input
     if (!url || typeof url !== 'string') {
