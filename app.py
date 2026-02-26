@@ -355,6 +355,12 @@ def home():
     """Home page alias"""
     return render_template('home.html')
 
+@app.route('/amp')
+@app.route('/amp/home')
+def home_amp():
+    """AMP home page"""
+    return render_template('home_amp.html')
+
 @app.route('/about')
 def about():
     """About page with SEO content"""
@@ -1316,6 +1322,7 @@ def sitemap_xml():
     host = request.host_url.rstrip('/')
     urls = [
         "/", "/home", "/about", "/contact", "/privacy", "/terms", "/blog",
+        "/amp/home",
         "/blog/how-to-track-product-prices-online",
         "/blog/best-price-alert-tools-india",
         "/blog/save-money-price-trackers",
