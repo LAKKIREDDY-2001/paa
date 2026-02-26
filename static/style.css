@@ -683,6 +683,11 @@ button span {
     box-shadow: 0 20px 50px rgba(255, 159, 10, 0.2);
 }
 
+.tracker-card:focus-visible {
+    outline: 2px solid var(--accent-orange);
+    outline-offset: 2px;
+}
+
 .tracker-header {
     display: flex;
     justify-content: space-between;
@@ -713,8 +718,8 @@ button span {
 .tracker-logo .company-logo {
     width: 100%;
     height: 100%;
-    object-fit: contain;
-    padding: 4px;
+    object-fit: cover;
+    padding: 0;
 }
 
 .tracker-logo i {
@@ -741,6 +746,21 @@ button span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.tracker-url-link {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.tracker-url-link:hover {
+    color: var(--accent-orange);
 }
 
 .tracker-checkbox {

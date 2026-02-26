@@ -617,6 +617,48 @@ async function loadTrackers() {
     }
 }
 
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, '&#96;');
+}
+
+function openTrackerUrlFromElement(element) {
+    const card = element?.closest('.tracker-card');
+    const url = card?.dataset?.url;
+    openSafeUrl(url, true);
+}
+
+function attachTrackerCardClickHandlers() {
+    const cards = document.querySelectorAll('.tracker-card');
+    cards.forEach((card) => {
+        card.addEventListener('click', (event) => {
+            if (event.target.closest('.tracker-action, .tracker-checkbox, .tracker-url-link')) {
+                return;
+            }
+            const url = card.dataset?.url;
+            openSafeUrl(url, true);
+        });
+
+        card.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            if (event.target.closest('.tracker-action, .tracker-checkbox, .tracker-url-link')) {
+                return;
+            }
+            event.preventDefault();
+            const url = card.dataset?.url;
+            openSafeUrl(url, true);
+        });
+    });
+}
+
 function renderTrackers() {
     const container = document.getElementById('trackers-list');
     if (trackers.length === 0) {
@@ -653,10 +695,15 @@ function renderTrackers() {
         const status = tracker.currentPrice <= tracker.targetPrice ? 'reached' : 'active';
         const statusClass = status === 'reached' ? 'status-reached' : 'status-active';
         const statusText = status === 'reached' ? 'Target Reached!' : 'Active';
+        const trackerUrl = tracker.url || '';
+        const safeUrlAttr = escapeAttr(trackerUrl);
+        const safeName = escapeHtml(tracker.productName || 'Product');
+        const safeUrlText = escapeHtml(trackerUrl);
         
-        return '<div class="tracker-card" data-id="' + tracker.id + '"><div class="tracker-header"><div class="tracker-info"><div class="tracker-logo">' + getCompanyLogo(tracker.url) + '</div><h4 class="tracker-name">' + (tracker.productName || 'Product') + '</h4></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div><div class="tracker-url">' + tracker.url + '</div><div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.currentPrice + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.targetPrice + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div><div class="tracker-actions"><button class="tracker-action" onclick="viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button class="tracker-action" onclick="refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button class="tracker-action delete" onclick="deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
+        return '<div class="tracker-card" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link"><div class="tracker-header"><div class="tracker-info"><div class="tracker-logo">' + getCompanyLogo(tracker.url) + '</div><h4 class="tracker-name">' + safeName + '</h4></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div><button type="button" class="tracker-url tracker-url-link" onclick="event.stopPropagation(); openTrackerUrlFromElement(this)">' + safeUrlText + '</button><div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.currentPrice + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.targetPrice + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div><div class="tracker-actions"><button class="tracker-action" onclick="viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button class="tracker-action" onclick="refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button class="tracker-action delete" onclick="deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
     }).join('');
     
+    attachTrackerCardClickHandlers();
     updateCounts();
 }
 
