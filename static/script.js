@@ -18,44 +18,9 @@ const getApiBaseUrl = () => {
 };
 const API_BASE_URL = getApiBaseUrl();
 
-// Safe window.open wrapper - prevents about:blank
-// Override window.open with safer version
-(function() {
-    try {
-        const originalWindowOpen = window.open;
-        window.open = function(url, target, features) {
-            try {
-                // Validate URL before opening
-                if (!url || typeof url !== 'string') {
-                    console.error('Invalid URL: not a string or empty');
-                    return null;
-                }
-                
-                const trimmed = url.trim().toLowerCase();
-                
-                // Block invalid URLs
-                const invalidPatterns = ['about:blank', 'about:', 'null', 'undefined', 'javascript:', ''];
-                if (invalidPatterns.includes(trimmed)) {
-                    console.error('Blocked window.open with invalid URL:', url);
-                    return null;
-                }
-                
-                // Block URLs starting with invalid protocols
-                if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) {
-                    console.error('Blocked window.open with dangerous URL:', url);
-                    return null;
-                }
-                
-                return originalWindowOpen.call(window, url, target, features);
-            } catch (e) {
-                console.error('Error in safe window.open:', e);
-                return null;
-            }
-        };
-    } catch (e) {
-        console.error('Could not override window.open:', e);
-    }
-})();
+const nativeWindowOpen = (window && typeof window.open === 'function')
+    ? window.open.bind(window)
+    : null;
 
 // Also add safe location wrapper
 const navigateTo = function(url) {
@@ -148,13 +113,12 @@ function openSafeUrl(url, newTab = true) {
         'moz-extension:',
         'edge:',
         'data:',
-        'vbscript:',
-        ''
+        'vbscript:'
     ];
     
     // Check for invalid patterns
     for (const pattern of invalidPatterns) {
-        if (trimmed === pattern || trimmed.toLowerCase().startsWith(pattern.toLowerCase())) {
+        if (trimmed.toLowerCase().startsWith(pattern.toLowerCase())) {
             console.error('Invalid URL: blocked pattern:', pattern);
             showToast('error', 'Invalid product URL');
             return;
@@ -192,7 +156,7 @@ function openSafeUrl(url, newTab = true) {
         const validUrl = isHttps || isHttp || isTel || isMailto;
         if (validUrl && (trimmed.startsWith('http') || trimmed.startsWith('tel') || trimmed.startsWith('mailto'))) {
             try {
-                const openedWindow = window.open(trimmed, '_blank', 'noopener,noreferrer');
+                const openedWindow = nativeWindowOpen ? nativeWindowOpen(trimmed, '_blank', 'noopener,noreferrer') : null;
                 // Check if window was blocked by popup blocker
                 if (!openedWindow || openedWindow === null || openedWindow === undefined) {
                     console.error('Popup was blocked');

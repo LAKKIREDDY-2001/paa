@@ -12,44 +12,9 @@ const getApiBaseUrl = () => {
 };
 const API_BASE_URL = getApiBaseUrl();
 
-// Safe window.open wrapper - prevents about:blank
-// Override window.open with safer version
-(function() {
-    try {
-        const originalWindowOpen = window.open;
-        window.open = function(url, target, features) {
-            try {
-                // Validate URL before opening
-                if (!url || typeof url !== 'string') {
-                    console.error('Invalid URL: not a string or empty');
-                    return null;
-                }
-                
-                const trimmed = url.trim().toLowerCase();
-                
-                // Block invalid URLs
-                const invalidPatterns = ['about:blank', 'about:', 'null', 'undefined', 'javascript:', ''];
-                if (invalidPatterns.includes(trimmed)) {
-                    console.error('Blocked window.open with invalid URL:', url);
-                    return null;
-                }
-                
-                // Block URLs starting with invalid protocols
-                if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) {
-                    console.error('Blocked window.open with dangerous URL:', url);
-                    return null;
-                }
-                
-                return originalWindowOpen.call(window, url, target, features);
-            } catch (e) {
-                console.error('Error in safe window.open:', e);
-                return null;
-            }
-        };
-    } catch (e) {
-        console.error('Could not override window.open:', e);
-    }
-})();
+const nativeWindowOpen = (window && typeof window.open === 'function')
+    ? window.open.bind(window)
+    : null;
 
 // Safe navigation wrapper
 const navigateTo = function(url) {
