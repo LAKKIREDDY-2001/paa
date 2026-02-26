@@ -5,6 +5,7 @@ let currentFilter = 'all';
 let currentTracker = null;
 let celebrationTracker = null;
 let isTrackerActionInProgress = false;
+let appInitialized = false;
 
 // Safe API_BASE_URL - fallback to empty string if window.location is not available
 const getApiBaseUrl = () => {
@@ -102,13 +103,28 @@ const celebrationColors = [
     '#54a0ff', '#5f27cd', '#00d2d3', '#ff9f0a'
 ];
 
-document.addEventListener('DOMContentLoaded', () => {
+const COMPANY_LOGOS = {
+    amazon: '/static/logos/amazon.svg',
+    flipkart: '/static/logos/flipkart.svg',
+    myntra: '/static/logos/myntra.svg',
+    ajio: '/static/logos/ajio.svg',
+    meesho: '/static/logos/meesho.svg',
+    snapdeal: '/static/logos/snapdeal.svg',
+    tatacliq: '/static/logos/tatacliq.svg',
+    reliance: '/static/logos/reliance.svg'
+};
+
+function initDashboardApp() {
+    if (appInitialized) return;
+    appInitialized = true;
     loadTrackers();
     setupNavigation();
     loadUserData();
     initTilt();
     initCelebration();
-});
+    startAutoRefresh();
+    addManualRefreshButton();
+}
 
 function openSafeUrl(url, newTab = true) {
     // Validate input
@@ -545,8 +561,8 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
             throw new Error(data.error || 'Failed to create tracker');
         }
         
-        const newTracker = {
-            id: Date.now(),
+        const newTracker = data.tracker || {
+            id: data.id,
             url: url,
             productName: productName,
             currentPrice: currentPrice,
@@ -557,7 +573,6 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
         };
         
         trackers.push(newTracker);
-        localStorage.setItem('trackers', JSON.stringify(trackers));
         
         showToast('success', 'Tracker created successfully!');
         
@@ -580,10 +595,26 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
 
 // ==================== TRACKERS DISPLAY ====================
 
-function loadTrackers() {
-    trackers = JSON.parse(localStorage.getItem('trackers') || '[]');
-    renderTrackers();
-    updateStats();
+async function loadTrackers() {
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
+            method: 'GET'
+        });
+        if (!response.ok) {
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+            throw new Error(data.error || 'Failed to load trackers');
+        }
+        trackers = Array.isArray(data) ? data : [];
+    } catch (error) {
+        trackers = [];
+        showToast('error', 'Could not load your trackers');
+    } finally {
+        renderTrackers();
+        updateStats();
+    }
 }
 
 function renderTrackers() {
@@ -606,14 +637,14 @@ function renderTrackers() {
     function getCompanyLogo(url) {
         if (!url) return '<i class="fa fa-shopping-bag"></i>';
         const urlLower = url.toLowerCase();
-        if (urlLower.includes('amazon')) return '<img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" class="company-logo" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'<i class=\\\'fa fa-amazon\\\'></i>\'">';
-        if (urlLower.includes('flipkart')) return '<img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Flipkart_logo.svg" alt="Flipkart" class="company-logo" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'<i class=\\\'fa fa-shopping-cart\\\'></i>\'">';
-        if (urlLower.includes('myntra')) return '<img src="https://upload.wikimedia.org/wikipedia/commons/2/24/Myntra_logo.svg" alt="Myntra" class="company-logo" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'<i class=\\\'fa fa-tag\\\'></i>\'">';
-        if (urlLower.includes('ajio')) return '<i class="fa fa-shopping-bag"></i>';
-        if (urlLower.includes('meesho')) return '<i class="fa fa-mobile"></i>';
-        if (urlLower.includes('snapdeal')) return '<i class="fa fa-shopping-cart"></i>';
-        if (urlLower.includes('tatacliq') || urlLower.includes('tata')) return '<i class="fa fa-store"></i>';
-        if (urlLower.includes('reliance') || urlLower.includes('reliancedigital')) return '<i class="fa fa-laptop"></i>';
+        if (urlLower.includes('amazon')) return '<img src="' + COMPANY_LOGOS.amazon + '" alt="Amazon" class="company-logo">';
+        if (urlLower.includes('flipkart')) return '<img src="' + COMPANY_LOGOS.flipkart + '" alt="Flipkart" class="company-logo">';
+        if (urlLower.includes('myntra')) return '<img src="' + COMPANY_LOGOS.myntra + '" alt="Myntra" class="company-logo">';
+        if (urlLower.includes('ajio')) return '<img src="' + COMPANY_LOGOS.ajio + '" alt="Ajio" class="company-logo">';
+        if (urlLower.includes('meesho')) return '<img src="' + COMPANY_LOGOS.meesho + '" alt="Meesho" class="company-logo">';
+        if (urlLower.includes('snapdeal')) return '<img src="' + COMPANY_LOGOS.snapdeal + '" alt="Snapdeal" class="company-logo">';
+        if (urlLower.includes('tatacliq') || urlLower.includes('tata')) return '<img src="' + COMPANY_LOGOS.tatacliq + '" alt="Tata CLiQ" class="company-logo">';
+        if (urlLower.includes('reliance') || urlLower.includes('reliancedigital')) return '<img src="' + COMPANY_LOGOS.reliance + '" alt="Reliance Digital" class="company-logo">';
         if (urlLower.includes('ebay')) return '<i class="fa fa-shopping-bag"></i>';
         return '<i class="fa fa-shopping-bag"></i>';
     }
@@ -678,6 +709,22 @@ function sortTrackers() {
     renderTrackers();
 }
 
+async function syncTrackerUpdate(tracker) {
+    if (!tracker || !tracker.id) return;
+    await fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            id: tracker.id,
+            currentPrice: tracker.currentPrice,
+            targetPrice: tracker.targetPrice,
+            productName: tracker.productName,
+            currency: tracker.currency,
+            currencySymbol: tracker.currencySymbol
+        })
+    });
+}
+
 // ==================== PRICE REFRESH ====================
 
 async function refreshPrice(trackerId) {
@@ -718,8 +765,7 @@ async function refreshPrice(trackerId) {
                     showCelebration(tracker);
                 }, 500);
             }
-            
-            localStorage.setItem('trackers', JSON.stringify(trackers));
+            await syncTrackerUpdate(tracker);
             showToast('success', 'Price updated: ' + (data.currency_symbol || '$') + data.price);
             renderTrackers();
             updateStats();
@@ -735,13 +781,24 @@ async function refreshPrice(trackerId) {
     }
 }
 
-function deleteTracker(trackerId) {
+async function deleteTracker(trackerId) {
     if (!confirm('Are you sure you want to delete this tracker?')) return;
-    trackers = trackers.filter(t => t.id !== trackerId);
-    localStorage.setItem('trackers', JSON.stringify(trackers));
-    renderTrackers();
-    updateStats();
-    showToast('success', 'Tracker deleted');
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: trackerId })
+        });
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to delete tracker');
+        }
+        trackers = trackers.filter(t => t.id !== trackerId);
+        renderTrackers();
+        updateStats();
+        showToast('success', 'Tracker deleted');
+    } catch (error) {
+        showToast('error', error.message || 'Failed to delete tracker');
+    }
 }
 
 function toggleSelect(trackerId) {
@@ -962,11 +1019,23 @@ function importData(input) {
         try {
             const imported = JSON.parse(e.target.result);
             if (Array.isArray(imported)) {
-                trackers = imported;
-                localStorage.setItem('trackers', JSON.stringify(trackers));
-                renderTrackers();
-                updateStats();
-                showToast('success', 'Data imported successfully');
+                Promise.all(imported.map((item) => fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: item.url,
+                        currentPrice: item.currentPrice,
+                        targetPrice: item.targetPrice,
+                        currency: item.currency || 'USD',
+                        currencySymbol: item.currencySymbol || '$',
+                        productName: item.productName || 'Product'
+                    })
+                }))).then(() => {
+                    loadTrackers();
+                    showToast('success', 'Data imported successfully');
+                }).catch(() => {
+                    showToast('error', 'Import failed');
+                });
             }
         } catch (error) {
             showToast('error', 'Invalid file format');
@@ -975,10 +1044,14 @@ function importData(input) {
     reader.readAsText(file);
 }
 
-function clearAllData() {
+async function clearAllData() {
     if (!confirm('Are you sure you want to delete all trackers? This cannot be undone.')) return;
+    await Promise.all(trackers.map((tracker) => fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tracker.id })
+    })));
     trackers = [];
-    localStorage.setItem('trackers', JSON.stringify(trackers));
     renderTrackers();
     updateStats();
     showToast('success', 'All data cleared');
@@ -986,19 +1059,25 @@ function clearAllData() {
 
 function exportTrackers() { exportData(); }
 
-function deleteSelected() {
+async function deleteSelected() {
     const selected = document.querySelectorAll('.tracker-checkbox.checked');
     if (selected.length === 0) {
         showToast('error', 'No trackers selected');
         return;
     }
     if (!confirm('Delete ' + selected.length + ' tracker(s)?')) return;
+    const idsToDelete = [];
     selected.forEach(checkbox => {
         const card = checkbox.closest('.tracker-card');
         const id = parseInt(card.dataset.id);
+        idsToDelete.push(id);
         trackers = trackers.filter(t => t.id !== id);
     });
-    localStorage.setItem('trackers', JSON.stringify(trackers));
+    await Promise.all(idsToDelete.map((id) => fetchJsonWithTimeout(API_BASE_URL + '/api/trackers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    })));
     renderTrackers();
     updateStats();
     document.getElementById('bulk-actions').style.display = 'none';
@@ -1128,6 +1207,7 @@ async function autoRefreshAllPrices() {
                     const oldPrice = tracker.currentPrice;
                     tracker.currentPrice = data.price;
                     tracker.productName = data.productName || tracker.productName;
+                    await syncTrackerUpdate(tracker);
                     
                     // Check if target just reached
                     if (checkPriceReached(tracker) && oldPrice > tracker.targetPrice) {
@@ -1140,10 +1220,7 @@ async function autoRefreshAllPrices() {
                 console.error(`Failed to refresh price for ${tracker.url}:`, error);
             }
         }
-        
-        // Save updated trackers
-        localStorage.setItem('trackers', JSON.stringify(trackers));
-        
+
         // Update UI
         renderTrackers();
         updateStats();
@@ -1230,13 +1307,7 @@ function addManualRefreshButton() {
 
 // Start auto-refresh on page load
 document.addEventListener('DOMContentLoaded', () => {
-    loadTrackers();
-    setupNavigation();
-    loadUserData();
-    initTilt();
-    initCelebration();
-    startAutoRefresh();
-    addManualRefreshButton();
+    initDashboardApp();
 });
 
 // Stop auto-refresh when leaving the page

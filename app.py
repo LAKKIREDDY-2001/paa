@@ -5,10 +5,14 @@ import random
 import string
 import json
 import secrets
+from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory, make_response
 from flask_cors import CORS
-from flask_session import Session
+try:
+    from flask_session import Session
+except ImportError:
+    Session = None
 import requests
 from bs4 import BeautifulSoup
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -35,8 +39,12 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, supports_credentials=True, origins="*")
 
-# Initialize Flask-Session
-Session(app)
+# Initialize Flask-Session when available; fallback to Flask signed cookies.
+if Session is not None:
+    Session(app)
+else:
+    app.config.pop('SESSION_TYPE', None)
+    print("WARNING: flask_session not installed; using default Flask session backend.")
 
 # Enable permanent sessions by default
 @app.before_request
@@ -44,6 +52,12 @@ def make_session_permanent():
     # Only set permanent if not already set
     if not session.get('permanent'):
         session.permanent = True
+
+
+def normalize_email(email):
+    if not email:
+        return ""
+    return email.strip().lower()
 
 def resolve_database_path():
     # Check for environment variable first - this takes priority
@@ -396,10 +410,10 @@ def signup():
         data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "Invalid request body"}), 400
-        username = data.get('username')
-        email = data.get('email')
+        username = (data.get('username') or '').strip()
+        email = normalize_email(data.get('email'))
         password = data.get('password')
-        phone = data.get('phone')
+        phone = (data.get('phone') or '').strip() or None
 
         if not all([username, email, password]):
             return jsonify({"error": "Missing data"}), 400
@@ -407,7 +421,7 @@ def signup():
         try:
             conn = sqlite3.connect(DATABASE)
             cursor = conn.cursor()
-            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+            cursor.execute("SELECT id FROM users WHERE lower(email) = ?", (email,))
             if cursor.fetchone():
                 conn.close()
                 return jsonify({"error": "Email already exists"}), 409
@@ -542,9 +556,9 @@ def login():
     
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
-        email = data.get('email')
+        email = normalize_email(data.get('email'))
         password = data.get('password')
-        remember = data.get('remember', True)  # Default to True for persistent login
+        remember = data.get('remember', True)
 
         if not email or not password:
             return jsonify({"error": "Missing data"}), 400
@@ -552,7 +566,7 @@ def login():
         try:
             conn = sqlite3.connect(DATABASE)
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            cursor.execute("SELECT * FROM users WHERE lower(email) = ?", (email,))
             user = cursor.fetchone()
 
             if user and check_password_hash(user[3], password):
@@ -579,7 +593,17 @@ def login():
                 })
                 
                 # Set remember cookie (lasts 1 year)
-                response_data.set_cookie('remember_token', token, max_age=60*60*24*365, httponly=True, samesite='Lax')
+                if remember:
+                    response_data.set_cookie(
+                        'remember_token',
+                        token,
+                        max_age=60 * 60 * 24 * 365,
+                        httponly=True,
+                        samesite='Lax',
+                        secure=request.is_secure
+                    )
+                else:
+                    response_data.delete_cookie('remember_token')
                 
                 print(f"User logged in: {email}, remember_token set: {token[:20]}...")
                 return response_data, 200
@@ -600,20 +624,39 @@ def dashboard():
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
-    return redirect(url_for('home'))
+    user_id = session.get('user_id')
+    remember_token = request.cookies.get('remember_token')
+
+    if user_id or remember_token:
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            if user_id:
+                cursor.execute("UPDATE users SET remember_token = NULL WHERE id = ?", (user_id,))
+            elif remember_token:
+                cursor.execute("UPDATE users SET remember_token = NULL WHERE remember_token = ?", (remember_token,))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Logout token cleanup warning: {e}")
+
+    session.clear()
+    response = make_response(redirect(url_for('home')))
+    response.delete_cookie('remember_token')
+    response.delete_cookie(app.config.get('SESSION_COOKIE_NAME', 'session'))
+    return response
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         data = request.get_json()
-        email = data.get('email')
+        email = normalize_email(data.get('email'))
         if not email:
             return jsonify({"error": "Email is required"}), 400
         
         conn = sqlite3.connect(DATABASE)
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT id FROM users WHERE lower(email) = ?", (email,))
         user = cursor.fetchone()
         conn.close()
         
@@ -725,7 +768,7 @@ def get_user():
         return jsonify({"id": user[0], "username": user[1], "email": user[2], "phone": user[3]})
     return jsonify({"error": "User not found"}), 404
 
-@app.route('/api/trackers', methods=['GET', 'POST', 'DELETE'])
+@app.route('/api/trackers', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def trackers():
     if 'user_id' not in session:
         return jsonify({"error": "Not logged in"}), 401
@@ -747,7 +790,11 @@ def trackers():
         return jsonify(result)
     
     if request.method == 'POST':
-        data = request.json
+        data = request.get_json(silent=True) or {}
+        if not data.get('url'):
+            conn.close()
+            return jsonify({"error": "URL is required"}), 400
+
         cursor.execute("""
             INSERT INTO trackers (user_id, url, product_name, current_price, target_price, currency, currency_symbol)
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -756,8 +803,54 @@ def trackers():
               data.get('currency', 'USD'), data.get('currencySymbol', '$')))
         tracker_id = cursor.lastrowid
         conn.commit()
+        cursor.execute("SELECT created_at FROM trackers WHERE id = ?", (tracker_id,))
+        created_at = cursor.fetchone()[0]
         conn.close()
-        return jsonify({"id": tracker_id, "message": "Tracker created"}), 201
+        return jsonify({
+            "id": tracker_id,
+            "message": "Tracker created",
+            "tracker": {
+                "id": tracker_id,
+                "url": data.get('url'),
+                "productName": data.get('productName') or "Product",
+                "currentPrice": data.get('currentPrice'),
+                "targetPrice": data.get('targetPrice'),
+                "currency": data.get('currency', 'USD'),
+                "currencySymbol": data.get('currencySymbol', '$'),
+                "createdAt": created_at
+            }
+        }), 201
+
+    if request.method == 'PUT':
+        data = request.get_json(silent=True) or {}
+        tracker_id = data.get('id')
+        if not tracker_id:
+            conn.close()
+            return jsonify({"error": "Tracker id is required"}), 400
+
+        cursor.execute("""
+            UPDATE trackers
+            SET current_price = COALESCE(?, current_price),
+                target_price = COALESCE(?, target_price),
+                product_name = COALESCE(?, product_name),
+                currency = COALESCE(?, currency),
+                currency_symbol = COALESCE(?, currency_symbol)
+            WHERE id = ? AND user_id = ?
+        """, (
+            data.get('currentPrice'),
+            data.get('targetPrice'),
+            data.get('productName'),
+            data.get('currency'),
+            data.get('currencySymbol'),
+            tracker_id,
+            session['user_id']
+        ))
+        updated_rows = cursor.rowcount
+        conn.commit()
+        conn.close()
+        if updated_rows == 0:
+            return jsonify({"error": "Tracker not found"}), 404
+        return jsonify({"message": "Tracker updated"}), 200
     
     if request.method == 'DELETE':
         data = request.json
@@ -776,13 +869,13 @@ def api_forgot_password():
     if not data:
         return jsonify({"error": "Invalid request"}), 400
     
-    email = data.get('email')
+    email = normalize_email(data.get('email'))
     if not email:
         return jsonify({"error": "Email is required"}), 400
     
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT id FROM users WHERE lower(email) = ?", (email,))
     user = cursor.fetchone()
     conn.close()
     
@@ -848,13 +941,13 @@ def api_check_email():
     if not data:
         return jsonify({"error": "Invalid request"}), 400
     
-    email = data.get('email')
+    email = normalize_email(data.get('email'))
     if not email:
         return jsonify({"error": "Email is required"}), 400
     
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT id FROM users WHERE lower(email) = ?", (email,))
     user = cursor.fetchone()
     conn.close()
     
@@ -870,7 +963,7 @@ def api_direct_reset_password():
     if not data:
         return jsonify({"error": "Invalid request"}), 400
     
-    email = data.get('email')
+    email = normalize_email(data.get('email'))
     password = data.get('password')
     
     if not email:
@@ -881,7 +974,7 @@ def api_direct_reset_password():
     
     conn = sqlite3.connect(DATABASE)
     cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    cursor.execute("SELECT id FROM users WHERE lower(email) = ?", (email,))
     user = cursor.fetchone()
     
     if not user:
@@ -901,11 +994,47 @@ def api_direct_reset_password():
 def parse_price(price_str):
     if not price_str:
         return None
-    price_str = re.sub(r'[^\d.]', '', price_str)
+    cleaned = str(price_str).strip()
+    cleaned = re.sub(r'[^\d,.\s]', '', cleaned)
+    cleaned = cleaned.replace(' ', '')
+
+    if cleaned.count('.') > 1 and ',' not in cleaned:
+        cleaned = cleaned.replace('.', '')
+    if cleaned.count(',') > 1 and '.' not in cleaned:
+        cleaned = cleaned.replace(',', '')
+    if ',' in cleaned and '.' in cleaned:
+        if cleaned.rfind(',') > cleaned.rfind('.'):
+            cleaned = cleaned.replace('.', '').replace(',', '.')
+        else:
+            cleaned = cleaned.replace(',', '')
+    else:
+        cleaned = cleaned.replace(',', '')
+
     try:
-        return float(price_str)
+        return float(cleaned)
     except ValueError:
         return None
+
+
+def extract_price_candidates(text):
+    if not text:
+        return []
+    patterns = [
+        r'"price"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
+        r'"salePrice"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
+        r'₹\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'INR\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'\$\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'USD\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'£\s*([0-9][0-9,]*\.?[0-9]*)',
+    ]
+    candidates = []
+    for pattern in patterns:
+        for match in re.findall(pattern, text, flags=re.IGNORECASE):
+            value = parse_price(match)
+            if value and 1 <= value <= 10000000:
+                candidates.append(value)
+    return candidates
 
 def get_site_info(url):
     url_lower = url.lower()
@@ -1070,8 +1199,8 @@ def scrape_price(soup, site, currency_symbol):
 
 @app.route('/get-price', methods=['POST'])
 def get_price():
-    data = request.json
-    url = data.get('url')
+    data = request.get_json(silent=True) or {}
+    url = (data.get('url') or '').strip()
     
     if not url:
         return jsonify({"error": "URL is required"}), 400
@@ -1086,23 +1215,29 @@ def get_price():
     if not (url.startswith('http://') or url.startswith('https://')):
         return jsonify({"error": "Invalid URL format"}), 400
 
+    parsed = urlparse(url)
+    if not parsed.netloc:
+        return jsonify({"error": "Invalid URL"}), 400
+    if parsed.hostname in ['localhost', '127.0.0.1', '0.0.0.0']:
+        return jsonify({"error": "Local URLs are not allowed"}), 400
+
     # Enhanced headers to avoid being blocked
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
         "Connection": "keep-alive",
         "Upgrade-Insecure-Requests": "1",
         "Sec-Fetch-Dest": "document",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-Site": "none",
         "Sec-Fetch-User": "?1",
-        "Cache-Control": "max-age=0"
+        "Cache-Control": "max-age=0",
+        "Referer": f"{parsed.scheme}://{parsed.netloc}/"
     }
 
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
         if response.status_code != 200:
             return jsonify({"error": f"Failed to fetch page (Status: {response.status_code})"}), response.status_code
         
@@ -1112,33 +1247,32 @@ def get_price():
         
         # Try to get product name from title
         product_name = "Product"
-        if soup.title:
+        if soup.title and soup.title.get_text():
             title = soup.title.get_text().strip()
             product_name = re.sub(r'\s*[-|]\s*(Amazon|Flipkart|Myntra|Ajio|Meesho|Snapdeal)\s*$', '', title, flags=re.IGNORECASE).strip()
+        og_title = soup.find("meta", attrs={"property": "og:title"})
+        if og_title and og_title.get("content"):
+            product_name = og_title.get("content").strip()
         
         if price is None:
-            # Last resort: try to find any price-like pattern in the entire HTML
             html_text = response.text
-            # Try to find any currency pattern
-            price_patterns = [
-                r'₹\s*([\d,]+\.?\d*)',
-                r'INR\s*([\d,]+\.?\d*)',
-                r'\$\s*([\d,]+\.?\d*)',
-                r'USD\s*([\d,]+\.?\d*)',
-                r'£\s*([\d,]+\.?\d*)',
-                r'GBP\s*([\d,]+\.?\d*)'
-            ]
-            for pattern in price_patterns:
-                matches = re.findall(pattern, html_text)
-                for match in matches:
-                    price = parse_price(match.replace(',', ''))
-                    if price and 50 < price < 100000:
-                        return jsonify({
-                            "price": price, "currency": currency, 
-                            "currency_symbol": currency_symbol, "productName": product_name
-                        })
-            
-            return jsonify({"error": "Could not find price on this page. The website structure may have changed."}), 404
+            for script in soup.find_all('script', type='application/ld+json'):
+                if script.string:
+                    candidates = extract_price_candidates(script.string)
+                    if candidates:
+                        price = min(candidates)
+                        break
+
+            if price is None:
+                # Extract from full HTML as last fallback.
+                candidates = extract_price_candidates(html_text)
+                if candidates:
+                    price = min(candidates)
+
+            if price is None:
+                if "captcha" in html_text.lower() or "robot check" in html_text.lower():
+                    return jsonify({"error": "Website blocked automated access (captcha). Try a direct product URL and retry later."}), 429
+                return jsonify({"error": "Could not find price on this page. Use a product page URL with visible price."}), 404
         
         return jsonify({
             "price": price, "currency": currency, 
@@ -1156,6 +1290,40 @@ def get_price():
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory('static', filename, max_age=0)
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    host = request.host_url.rstrip('/')
+    content = f"""User-agent: *
+Allow: /
+
+Sitemap: {host}/sitemap.xml
+"""
+    response = make_response(content)
+    response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+    return response
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    host = request.host_url.rstrip('/')
+    urls = [
+        "/", "/home", "/about", "/contact", "/privacy", "/terms", "/blog",
+        "/blog/how-to-track-product-prices-online",
+        "/blog/best-price-alert-tools-india",
+        "/blog/save-money-price-trackers",
+        "/blog/amazon-price-history",
+        "/signup", "/login"
+    ]
+    items = "\n".join([f"<url><loc>{host}{path}</loc></url>" for path in urls])
+    content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{items}
+</urlset>"""
+    response = make_response(content)
+    response.headers['Content-Type'] = 'application/xml; charset=utf-8'
+    return response
 
 # Catch-all route for SPA-style routing
 # This ensures that any route that doesn't match API or static serves the appropriate page
