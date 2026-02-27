@@ -1879,24 +1879,42 @@ def catch_all(path):
 
 @app.after_request
 def add_no_cache_headers(response):
-    # Explicitly allow snippets/indexing for public pages.
-    path = request.path
-    indexable = {
+    path = request.path or '/'
+    is_html = bool(response.content_type and response.content_type.startswith('text/html'))
+
+    public_indexable_paths = {
         '/', '/home', '/about', '/contact', '/privacy', '/terms', '/blog',
         '/blog/how-to-track-product-prices-online',
         '/blog/best-price-alert-tools-india',
         '/blog/save-money-price-trackers',
-        '/blog/amazon-price-history'
+        '/blog/amazon-price-history',
+        '/amp', '/amp/home'
     }
-    if path in indexable:
+    explicit_noindex_paths = {
+        '/login', '/signup', '/forgot-password', '/reset-password', '/dashboard', '/error'
+    }
+
+    # Make indexing intent explicit to Google for all main pages.
+    if path in public_indexable_paths and response.status_code < 400:
         response.headers['X-Robots-Tag'] = 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
-    elif path.startswith('/api/') or path == '/dashboard' or path.startswith('/dashboard/') or response.status_code >= 400:
+    elif (
+        path in explicit_noindex_paths
+        or path.startswith('/dashboard/')
+        or path.startswith('/api/')
+        or response.status_code >= 400
+    ):
         response.headers['X-Robots-Tag'] = 'noindex, nofollow'
 
-    if response.content_type and response.content_type.startswith('text/html'):
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+    # Public pages should be cacheable; private/auth/error pages should not.
+    if is_html:
+        if path in public_indexable_paths and response.status_code < 400:
+            response.headers['Cache-Control'] = 'public, max-age=300'
+            response.headers.pop('Pragma', None)
+            response.headers.pop('Expires', None)
+        else:
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
     return response
 
 # ==================== MAIN ====================
