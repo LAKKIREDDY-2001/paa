@@ -67,10 +67,14 @@ def resolve_database_path():
     configured_path = os.environ.get('DATABASE_PATH')
     if configured_path:
         db_dir = os.path.dirname(configured_path) or '.'
-        os.makedirs(db_dir, exist_ok=True)
-        if os.access(db_dir, os.W_OK):
-            print(f"Using database path from environment: {configured_path}")
-            return configured_path
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+            if os.access(db_dir, os.W_OK):
+                print(f"Using database path from environment: {configured_path}")
+                return configured_path
+            print(f"Configured DATABASE_PATH directory is not writable: {db_dir}")
+        except Exception as e:
+            print(f"Could not use DATABASE_PATH={configured_path}: {e}")
 
     # Check for common persistent directories in order of preference.
     # Avoid ephemeral code directories in production (they reset on deploy).
@@ -107,8 +111,19 @@ print(f"Using SQLite database: {DATABASE}")
 
 if app.config.get('SESSION_TYPE') == 'filesystem':
     default_session_dir = os.path.join(os.path.dirname(DATABASE), 'flask_session')
-    app.config['SESSION_FILE_DIR'] = os.environ.get('SESSION_FILE_DIR', default_session_dir)
-    os.makedirs(app.config['SESSION_FILE_DIR'], exist_ok=True)
+    configured_session_dir = os.environ.get('SESSION_FILE_DIR', default_session_dir)
+    try:
+        os.makedirs(configured_session_dir, exist_ok=True)
+        if os.access(configured_session_dir, os.W_OK):
+            app.config['SESSION_FILE_DIR'] = configured_session_dir
+        else:
+            raise PermissionError(f"Directory not writable: {configured_session_dir}")
+    except Exception as e:
+        fallback_session_dir = '/tmp/flask_session'
+        os.makedirs(fallback_session_dir, exist_ok=True)
+        app.config['SESSION_FILE_DIR'] = fallback_session_dir
+        print(f"WARNING: Could not use SESSION_FILE_DIR={configured_session_dir}: {e}")
+        print(f"Falling back to session file directory: {fallback_session_dir}")
     print(f"Using session file directory: {app.config['SESSION_FILE_DIR']}")
 
 # Initialize Flask-Session when available; fallback to Flask signed cookies.
