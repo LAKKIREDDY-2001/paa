@@ -1764,6 +1764,18 @@ button span {
     color: var(--accent-orange);
 }
 
+.stat-card,
+.settings-section {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transform-style: preserve-3d;
+}
+
+.stat-card:hover,
+.settings-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(10, 20, 30, 0.14);
+}
+
 /* ============================================
    AI INSIGHTS + AI HELPER
    ============================================ */
@@ -1840,6 +1852,7 @@ button span {
     right: 18px;
     bottom: 18px;
     z-index: 1200;
+    pointer-events: auto;
 }
 
 .ai-helper-toggle {
@@ -1933,6 +1946,145 @@ button span {
     background: #2563eb;
     color: #fff;
     cursor: pointer;
+}
+
+.quick-ai-actions {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.activity-panel {
+    margin-top: 18px;
+    background: var(--bg-white);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+}
+
+.activity-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.activity-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.activity-feed {
+    display: grid;
+    gap: 8px;
+}
+
+.activity-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.activity-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.activity-main span {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+}
+
+.activity-time {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.command-palette {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.44);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    z-index: 1300;
+    padding-top: 80px;
+}
+
+.command-palette.open {
+    display: flex;
+}
+
+.command-dialog {
+    width: min(640px, calc(100vw - 30px));
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.3);
+    overflow: hidden;
+}
+
+.command-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px;
+}
+
+.command-head input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 0.95rem;
+}
+
+.command-head button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.command-list {
+    display: grid;
+    gap: 4px;
+    padding: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.command-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    cursor: pointer;
+}
+
+.command-item:hover {
+    border-color: #cbd5e1;
+    background: #eef2ff;
+}
+
+.command-item code {
+    font-size: 0.78rem;
+    color: #334155;
 }
 
 .settings-grid {

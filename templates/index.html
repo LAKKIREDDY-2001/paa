@@ -17,7 +17,7 @@
     <meta name="twitter:description" content="Track live prices of products from Amazon, Flipkart, Myntra, Ajio, Meesho and 100+ shopping sites. Get instant alerts when prices drop!">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔔</text></svg>">
     <link rel="canonical" href="https://pricealerter.in/dashboard">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=20260228b">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
@@ -171,6 +171,12 @@
                             <span class="btn-text">Start AI Tracking</span>
                             <span class="btn-icon"><i class="fa fa-bolt"></i></span>
                         </button>
+                        <div class="quick-ai-actions">
+                            <button type="button" class="btn-secondary small" onclick="switchView('my-trackers')"><i class="fa fa-list"></i> My Trackers</button>
+                            <button type="button" class="btn-secondary small" onclick="autoRefreshAllPrices()"><i class="fa fa-rotate-right"></i> Refresh All</button>
+                            <button type="button" class="btn-secondary small" onclick="toggleAiHelper(true)"><i class="fa fa-robot"></i> Ask AI Helper</button>
+                            <button type="button" class="btn-secondary small" onclick="openCommandPalette()"><i class="fa fa-keyboard"></i> Command Menu</button>
+                        </div>
                         
                         <div class="supported-sites">
                             <span><img class="brand-logo" src="/static/logos/amazon.svg?v=20260228" alt="Amazon logo"> Amazon</span>
@@ -280,6 +286,15 @@
                             </button>
                         </div>
                     </div>
+                    <section class="activity-panel">
+                        <div class="activity-head">
+                            <h3><i class="fa fa-clock-rotate-left"></i> Recent Activity</h3>
+                            <button class="btn-secondary small" type="button" onclick="renderActivityFeed()">Refresh</button>
+                        </div>
+                        <div id="activity-feed" class="activity-feed">
+                            <div class="activity-item">No activity yet.</div>
+                        </div>
+                    </section>
                     
                     <div class="bulk-actions" id="bulk-actions" style="display: none;">
                         <span id="selected-count">0 selected</span>
@@ -701,11 +716,11 @@
         </div>
     </div>
 
-    <script src="/static/script.js"></script>
-    <script src="/static/self-heal.js"></script>
+    <script src="/static/script.js?v=20260228b"></script>
+    <script src="/static/self-heal.js?v=20260228b"></script>
 
     <div class="ai-helper" id="ai-helper">
-        <button class="ai-helper-toggle" id="ai-helper-toggle" type="button" aria-label="Open AI helper">
+        <button class="ai-helper-toggle" id="ai-helper-toggle" type="button" aria-label="Open AI helper" onclick="toggleAiHelper()">
             <i class="fa fa-robot"></i>
             <span>AI Helper</span>
         </button>
@@ -719,6 +734,17 @@
                 <input type="text" id="ai-chat-input" placeholder="Ask: open trackers, refresh, settings...">
                 <button type="button" onclick="sendAiChatMessage()"><i class="fa fa-paper-plane"></i></button>
             </div>
+        </div>
+    </div>
+
+    <div class="command-palette" id="command-palette" aria-hidden="true">
+        <div class="command-dialog">
+            <div class="command-head">
+                <i class="fa fa-terminal"></i>
+                <input type="text" id="command-input" placeholder="Type command: trackers, new, refresh, settings, fix">
+                <button type="button" onclick="closeCommandPalette()"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="command-list" id="command-list"></div>
         </div>
     </div>
 </body>

@@ -6,6 +6,7 @@ let celebrationTracker = null;
 let isTrackerActionInProgress = false;
 let appInitialized = false;
 let dashboardUser = { username: 'User' };
+let recentActivity = [];
 
 // Safe API_BASE_URL - fallback to empty string if window.location is not available
 const getApiBaseUrl = () => {
@@ -90,6 +91,7 @@ function initDashboardApp() {
     startAutoRefresh();
     addManualRefreshButton();
     initAiAssistant();
+    initCommandPalette();
     refreshAIInsights();
 }
 
@@ -552,6 +554,7 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
         };
         
         trackers.push(newTracker);
+        logActivity('Tracker created', productName + ' target set at ' + currencySymbol + targetPrice);
         
         showToast('success', 'Tracker created successfully!');
         
@@ -686,6 +689,7 @@ function renderTrackers() {
     initTracker3D();
     updateCounts();
     refreshAIInsights();
+    renderActivityFeed();
 }
 
 function updateStats() {
@@ -795,6 +799,7 @@ async function refreshPrice(trackerId) {
                 }, 500);
             }
             await syncTrackerUpdate(tracker);
+            logActivity('Price refreshed', (tracker.productName || 'Product') + ' now at ' + (data.currency_symbol || '$') + data.price);
             showToast('success', 'Price updated: ' + (data.currency_symbol || '$') + data.price);
             renderTrackers();
             updateStats();
@@ -822,6 +827,7 @@ async function deleteTracker(trackerId) {
             throw new Error(data.error || 'Failed to delete tracker');
         }
         trackers = trackers.filter(t => t.id !== trackerId);
+        logActivity('Tracker deleted', 'Removed tracker #' + trackerId);
         renderTrackers();
         updateStats();
         showToast('success', 'Tracker deleted');
@@ -1256,6 +1262,7 @@ async function autoRefreshAllPrices() {
         
         // Show notification
         if (updatedCount > 0) {
+            logActivity('Auto-refresh complete', 'Updated ' + updatedCount + ' tracker(s)');
             showToast('success', `Auto-refreshed ${updatedCount} tracker(s)`);
         }
     } finally {
@@ -1637,6 +1644,53 @@ function initAiAssistant() {
     appendAiMessage('Hi ' + (dashboardUser.username || 'there') + ', I can navigate and auto-fix account issues.', 'bot');
 }
 
+function logActivity(title, detail) {
+    recentActivity.unshift({
+        title: title,
+        detail: detail,
+        time: new Date().toISOString()
+    });
+    if (recentActivity.length > 25) {
+        recentActivity = recentActivity.slice(0, 25);
+    }
+}
+
+function formatRelativeTime(iso) {
+    const diffMs = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + 'm ago';
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + 'h ago';
+    return Math.floor(hours / 24) + 'd ago';
+}
+
+function renderActivityFeed() {
+    const feed = document.getElementById('activity-feed');
+    if (!feed) return;
+
+    if (!recentActivity.length) {
+        const base = trackers.slice(0, 4).map((tracker) => ({
+            title: 'Tracker active',
+            detail: tracker.productName || 'Tracked product',
+            time: tracker.createdAt || new Date().toISOString()
+        }));
+        recentActivity = base;
+    }
+
+    if (!recentActivity.length) {
+        feed.innerHTML = '<div class="activity-item">No activity yet.</div>';
+        return;
+    }
+
+    feed.innerHTML = recentActivity.slice(0, 8).map((item) => (
+        '<div class="activity-item">' +
+            '<div class="activity-main"><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.detail) + '</span></div>' +
+            '<div class="activity-time">' + formatRelativeTime(item.time) + '</div>' +
+        '</div>'
+    )).join('');
+}
+
 // ==================== 3D TRACKER EFFECT ====================
 
 function initTracker3D() {
@@ -1655,5 +1709,90 @@ function initTracker3D() {
         card.addEventListener('mouseleave', () => {
             card.style.transform = '';
         });
+    });
+}
+
+// ==================== COMMAND PALETTE ====================
+
+const COMMANDS = [
+    { key: 'new', label: 'Open New Alert', run: () => switchView('new-alert') },
+    { key: 'trackers', label: 'Open My Trackers', run: () => switchView('my-trackers') },
+    { key: 'settings', label: 'Open Settings', run: () => switchView('settings') },
+    { key: 'trends', label: 'Open Price Trends', run: () => switchView('price-trends') },
+    { key: 'refresh', label: 'Refresh All Prices', run: () => autoRefreshAllPrices() },
+    { key: 'fix', label: 'Run AI Auto Fix', run: () => runAiAutofix() },
+    { key: 'chat', label: 'Open AI Helper', run: () => toggleAiHelper(true) }
+];
+
+function openCommandPalette() {
+    const modal = document.getElementById('command-palette');
+    const input = document.getElementById('command-input');
+    if (!modal || !input) return;
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    renderCommandList('');
+    setTimeout(() => input.focus(), 10);
+}
+
+function closeCommandPalette() {
+    const modal = document.getElementById('command-palette');
+    if (!modal) return;
+    modal.classList.remove('open');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function renderCommandList(query) {
+    const list = document.getElementById('command-list');
+    if (!list) return;
+    const q = String(query || '').toLowerCase();
+    const filtered = COMMANDS.filter((cmd) => !q || cmd.key.includes(q) || cmd.label.toLowerCase().includes(q));
+    list.innerHTML = filtered.map((cmd) => (
+        '<button type="button" class="command-item" data-command="' + cmd.key + '">' +
+            '<span>' + cmd.label + '</span>' +
+            '<code>' + cmd.key + '</code>' +
+        '</button>'
+    )).join('');
+
+    list.querySelectorAll('.command-item').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const found = COMMANDS.find((c) => c.key === btn.dataset.command);
+            if (found) {
+                found.run();
+                logActivity('Quick command', found.label);
+                closeCommandPalette();
+            }
+        });
+    });
+}
+
+function initCommandPalette() {
+    const input = document.getElementById('command-input');
+    const modal = document.getElementById('command-palette');
+    if (input) {
+        input.addEventListener('input', (event) => {
+            renderCommandList(event.target.value || '');
+        });
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeCommandPalette();
+            if (event.key === 'Enter') {
+                const first = document.querySelector('.command-item');
+                if (first) first.click();
+            }
+        });
+    }
+    if (modal) {
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) closeCommandPalette();
+        });
+    }
+    document.addEventListener('keydown', (event) => {
+        const isMetaK = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
+        if (isMetaK) {
+            event.preventDefault();
+            openCommandPalette();
+        }
+        if (event.key === 'Escape') {
+            closeCommandPalette();
+        }
     });
 }
