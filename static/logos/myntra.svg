@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="36" viewBox="0 0 120 36" role="img" aria-label="Myntra logo">
-  <rect width="120" height="36" rx="6" fill="#db2777"/>
-  <text x="14" y="23" font-size="16" fill="#ffffff" font-family="Arial, sans-serif" font-weight="700">Myntra</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="Myntra logo">
+  <rect width="40" height="40" rx="9" fill="#db2777"/>
+  <path d="M10 30V10h4l6 8 6-8h4v20h-4V18l-6 7-6-7v12z" fill="#ffffff"/>
 </svg>
