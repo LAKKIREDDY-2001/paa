@@ -76,23 +76,24 @@ def resolve_database_path():
         except Exception as e:
             print(f"Could not use DATABASE_PATH={configured_path}: {e}")
 
-    # Check for common persistent directories in order of preference.
-    # Avoid ephemeral code directories in production (they reset on deploy).
+    def can_write_dir(path):
+        return os.path.isdir(path) and os.access(path, os.W_OK | os.X_OK)
+
+    # Render/host-provided persistent mount candidates.
+    # Only use directories that already exist and are writable.
     persistent_dirs = [
+        os.environ.get('RENDER_DISK_PATH', ''),
+        os.environ.get('RENDER_DISK_MOUNT_PATH', ''),
         '/var/data',
         '/data'
     ]
-    
+    persistent_dirs = [p for p in persistent_dirs if p]
+
     for persist_dir in persistent_dirs:
-        try:
-            os.makedirs(persist_dir, exist_ok=True)
-            if os.access(persist_dir, os.W_OK):
-                db_path = os.path.join(persist_dir, 'database.db')
-                print(f"Using persistent directory: {persist_dir}")
-                return db_path
-        except Exception as e:
-            print(f"Could not use {persist_dir}: {e}")
-            continue
+        if can_write_dir(persist_dir):
+            db_path = os.path.join(persist_dir, 'database.db')
+            print(f"Using persistent directory: {persist_dir}")
+            return db_path
 
     # For local development - use project directory.
     project_dir = os.path.dirname(os.path.abspath(__file__))
@@ -101,29 +102,48 @@ def resolve_database_path():
         print(f"Using project directory database: {local_path}")
         return local_path
 
-    # Last resort: try tmp with clear warning.
-    print("WARNING: Using tmp directory - data will NOT persist across restarts/deploys!")
-    print("For production, set DATABASE_PATH (recommended: /var/data/database.db) or mount a writable persistent disk.")
+    # Last resort: use tmp (ephemeral).
+    print("INFO: Using /tmp database path (ephemeral).")
+    print("INFO: For persistent data on Render, attach a disk and set DATABASE_PATH=/var/data/database.db.")
     return '/tmp/database.db'
 
 DATABASE = resolve_database_path()
 print(f"Using SQLite database: {DATABASE}")
 
 if app.config.get('SESSION_TYPE') == 'filesystem':
-    default_session_dir = os.path.join(os.path.dirname(DATABASE), 'flask_session')
-    configured_session_dir = os.environ.get('SESSION_FILE_DIR', default_session_dir)
-    try:
-        os.makedirs(configured_session_dir, exist_ok=True)
-        if os.access(configured_session_dir, os.W_OK):
-            app.config['SESSION_FILE_DIR'] = configured_session_dir
-        else:
-            raise PermissionError(f"Directory not writable: {configured_session_dir}")
-    except Exception as e:
-        fallback_session_dir = '/tmp/flask_session'
-        os.makedirs(fallback_session_dir, exist_ok=True)
-        app.config['SESSION_FILE_DIR'] = fallback_session_dir
-        print(f"WARNING: Could not use SESSION_FILE_DIR={configured_session_dir}: {e}")
-        print(f"Falling back to session file directory: {fallback_session_dir}")
+    def resolve_session_file_dir():
+        default_session_dir = os.path.join(os.path.dirname(DATABASE), 'flask_session')
+        configured_session_dir = os.environ.get('SESSION_FILE_DIR', '').strip()
+
+        candidates = []
+        if configured_session_dir:
+            candidates.append(configured_session_dir)
+        candidates.append(default_session_dir)
+        candidates.append('/tmp/flask_session')
+
+        for candidate in candidates:
+            try:
+                # If directory exists, validate permissions.
+                if os.path.isdir(candidate):
+                    if os.access(candidate, os.W_OK | os.X_OK):
+                        return candidate
+                    continue
+
+                # Create only when parent directory is writable.
+                parent = os.path.dirname(candidate) or '.'
+                if os.path.isdir(parent) and os.access(parent, os.W_OK | os.X_OK):
+                    os.makedirs(candidate, exist_ok=True)
+                    if os.access(candidate, os.W_OK | os.X_OK):
+                        return candidate
+            except Exception:
+                continue
+
+        # Guaranteed local fallback.
+        local_tmp = '/tmp/flask_session'
+        os.makedirs(local_tmp, exist_ok=True)
+        return local_tmp
+
+    app.config['SESSION_FILE_DIR'] = resolve_session_file_dir()
     print(f"Using session file directory: {app.config['SESSION_FILE_DIR']}")
 
 # Initialize Flask-Session when available; fallback to Flask signed cookies.
