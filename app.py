@@ -71,12 +71,10 @@ def resolve_database_path():
             print(f"Using database path from environment: {configured_path}")
             return configured_path
 
-    # Check for common persistent directories in order of preference
-    # These paths persist across deploys/restarts
+    # Check for common persistent directories in order of preference.
+    # Avoid ephemeral code directories in production (they reset on deploy).
     persistent_dirs = [
         '/var/data',
-        '/opt/render/project/src',
-        '/home/app',
         '/data'
     ]
     
@@ -91,16 +89,16 @@ def resolve_database_path():
             print(f"Could not use {persist_dir}: {e}")
             continue
 
-    # For local development - use project directory (most reliable for local)
+    # For local development - use project directory.
     project_dir = os.path.dirname(os.path.abspath(__file__))
     local_path = os.path.join(project_dir, 'database.db')
-    if os.access(project_dir, os.W_OK):
+    if (not IS_PRODUCTION) and os.access(project_dir, os.W_OK):
         print(f"Using project directory database: {local_path}")
         return local_path
 
-    # Last resort: try tmp with clear warning
-    print("WARNING: Using tmp directory - data will NOT persist across restarts!")
-    print("For production, set DATABASE_PATH environment variable or ensure /data is writable")
+    # Last resort: try tmp with clear warning.
+    print("WARNING: Using tmp directory - data will NOT persist across restarts/deploys!")
+    print("For production, set DATABASE_PATH (recommended: /var/data/database.db) or mount a writable persistent disk.")
     return '/tmp/database.db'
 
 DATABASE = resolve_database_path()
@@ -627,6 +625,39 @@ def login():
                     response_data.delete_cookie('remember_token')
                 
                 print(f"User logged in: {email}, remember_token set: {token[:20]}...")
+                return response_data, 200
+            elif user and user[3] == password:
+                # Backward compatibility: migrate legacy plaintext passwords to hashed format.
+                hashed_password = generate_password_hash(password)
+                cursor.execute("UPDATE users SET password = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?", (hashed_password, user[0]))
+                token = secrets.token_urlsafe(32)
+                cursor.execute("UPDATE users SET remember_token = ? WHERE id = ?", (token, user[0]))
+                conn.commit()
+                conn.close()
+
+                session['user_id'] = user[0]
+                session['username'] = user[1]
+                session['email'] = user[2]
+                session.permanent = True
+
+                response_data = jsonify({
+                    "success": "Logged in successfully",
+                    "redirect": "/dashboard"
+                })
+
+                if remember:
+                    response_data.set_cookie(
+                        'remember_token',
+                        token,
+                        max_age=60 * 60 * 24 * 365,
+                        httponly=True,
+                        samesite='Lax',
+                        secure=app.config.get('SESSION_COOKIE_SECURE', False)
+                    )
+                else:
+                    response_data.delete_cookie('remember_token')
+
+                print(f"User logged in (legacy password migrated): {email}")
                 return response_data, 200
             else:
                 conn.close()
