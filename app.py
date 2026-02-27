@@ -283,6 +283,38 @@ def send_password_reset_email(email, reset_token):
     '''
     return send_mail(to_email=email, subject='AI Price Alert - Password Reset', html_body=email_content)
 
+
+def send_price_target_reached_email(to_email, product_name, product_url, current_price, target_price, currency_symbol):
+    product_display = product_name or "Product"
+    current_str = f"{currency_symbol}{current_price:.2f}"
+    target_str = f"{currency_symbol}{target_price:.2f}"
+    html_body = f'''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head><meta charset="UTF-8"><title>Price Target Reached</title></head>
+    <body style="font-family: Arial, sans-serif; max-width: 640px; margin: 0 auto; padding: 20px;">
+        <h2 style="color:#0f172a; margin-bottom: 12px;">Your price alert has triggered!</h2>
+        <p style="color:#334155;">Great news. A tracked item reached your target price.</p>
+        <div style="border:1px solid #e2e8f0; border-radius:12px; padding:16px; background:#f8fafc;">
+            <p style="margin:0 0 8px 0;"><strong>Product:</strong> {product_display}</p>
+            <p style="margin:0 0 8px 0;"><strong>Current price:</strong> {current_str}</p>
+            <p style="margin:0;"><strong>Your target:</strong> {target_str}</p>
+        </div>
+        <p style="margin-top:16px;">
+            <a href="{product_url}" style="display:inline-block; padding:12px 18px; background:#0ea5e9; color:#fff; text-decoration:none; border-radius:8px;">
+                View Product
+            </a>
+        </p>
+        <p style="color:#64748b; font-size:12px; margin-top:18px;">You received this because you created a tracker on AI Price Alert.</p>
+    </body>
+    </html>
+    '''
+    return send_mail(
+        to_email=to_email,
+        subject=f"Price dropped: {product_display}",
+        html_body=html_body
+    )
+
 # ==================== DATABASE ====================
 
 def init_db():
@@ -364,10 +396,17 @@ def init_db():
             target_price REAL NOT NULL,
             currency TEXT,
             currency_symbol TEXT,
+            target_reached_notified INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ''')
+
+    # Backward-compatible migration for existing databases.
+    cursor.execute("PRAGMA table_info(trackers)")
+    tracker_columns = [row[1] for row in cursor.fetchall()]
+    if 'target_reached_notified' not in tracker_columns:
+        cursor.execute("ALTER TABLE trackers ADD COLUMN target_reached_notified INTEGER DEFAULT 0")
     
     conn.commit()
     conn.close()
@@ -902,19 +941,56 @@ def trackers():
             return jsonify({"error": "Tracker id is required"}), 400
 
         cursor.execute("""
+            SELECT t.id, t.url, t.product_name, t.current_price, t.target_price, t.currency, t.currency_symbol,
+                   COALESCE(t.target_reached_notified, 0), u.email
+            FROM trackers t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.id = ? AND t.user_id = ?
+        """, (tracker_id, session['user_id']))
+        existing = cursor.fetchone()
+        if not existing:
+            conn.close()
+            return jsonify({"error": "Tracker not found"}), 404
+
+        (
+            _id, existing_url, existing_name, existing_current_price, existing_target_price,
+            existing_currency, existing_currency_symbol, existing_notified, user_email
+        ) = existing
+
+        new_current_price = data.get('currentPrice')
+        new_target_price = data.get('targetPrice')
+        new_product_name = data.get('productName')
+        new_currency = data.get('currency')
+        new_currency_symbol = data.get('currencySymbol')
+
+        final_current = float(new_current_price) if new_current_price is not None else float(existing_current_price)
+        final_target = float(new_target_price) if new_target_price is not None else float(existing_target_price)
+        final_name = new_product_name if new_product_name is not None else existing_name
+        final_currency = new_currency if new_currency is not None else existing_currency
+        final_symbol = new_currency_symbol if new_currency_symbol is not None else existing_currency_symbol
+
+        was_below_or_equal = float(existing_current_price) <= float(existing_target_price)
+        is_below_or_equal = final_current <= final_target
+        should_notify_now = (not was_below_or_equal) and is_below_or_equal and int(existing_notified or 0) == 0
+        reset_notified = (not is_below_or_equal)
+        next_notified_value = 1 if should_notify_now else (0 if reset_notified else int(existing_notified or 0))
+
+        cursor.execute("""
             UPDATE trackers
-            SET current_price = COALESCE(?, current_price),
-                target_price = COALESCE(?, target_price),
-                product_name = COALESCE(?, product_name),
-                currency = COALESCE(?, currency),
-                currency_symbol = COALESCE(?, currency_symbol)
+            SET current_price = ?,
+                target_price = ?,
+                product_name = ?,
+                currency = ?,
+                currency_symbol = ?,
+                target_reached_notified = ?
             WHERE id = ? AND user_id = ?
         """, (
-            data.get('currentPrice'),
-            data.get('targetPrice'),
-            data.get('productName'),
-            data.get('currency'),
-            data.get('currencySymbol'),
+            final_current,
+            final_target,
+            final_name,
+            final_currency,
+            final_symbol,
+            next_notified_value,
             tracker_id,
             session['user_id']
         ))
@@ -923,6 +999,20 @@ def trackers():
         conn.close()
         if updated_rows == 0:
             return jsonify({"error": "Tracker not found"}), 404
+
+        if should_notify_now and user_email:
+            try:
+                send_price_target_reached_email(
+                    to_email=user_email,
+                    product_name=final_name,
+                    product_url=existing_url,
+                    current_price=final_current,
+                    target_price=final_target,
+                    currency_symbol=final_symbol or '$'
+                )
+            except Exception as e:
+                print(f"Price alert email send failed for tracker {tracker_id}: {e}")
+
         return jsonify({"message": "Tracker updated"}), 200
     
     if request.method == 'DELETE':
