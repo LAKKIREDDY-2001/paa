@@ -777,6 +777,11 @@ def error_page():
 
 # ==================== API ROUTES ====================
 
+@app.route('/health')
+def health():
+    """Simple health endpoint for Render liveness checks."""
+    return "OK", 200
+
 @app.route('/api/health')
 def health_check():
     """Health check endpoint for debugging deployment issues"""
