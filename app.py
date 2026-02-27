@@ -865,6 +865,28 @@ def health_check():
     
     return jsonify(health)
 
+
+@app.route('/api/self-heal/report', methods=['POST'])
+def self_heal_report():
+    """
+    Lightweight runtime incident reporting endpoint used by the frontend self-heal layer.
+    Never fails hard, never requires auth, and keeps payload bounded.
+    """
+    data = request.get_json(silent=True) or {}
+    event_type = str(data.get('type', 'unknown'))[:64]
+    message = str(data.get('message', ''))[:500]
+    page = str(data.get('page', request.path))[:200]
+    meta = data.get('meta', {})
+    if not isinstance(meta, dict):
+        meta = {}
+    safe_meta = {}
+    for k, v in list(meta.items())[:20]:
+        safe_meta[str(k)[:64]] = str(v)[:200]
+
+    user_id = session.get('user_id')
+    print(f"[self-heal] type={event_type} page={page} user_id={user_id} message={message} meta={safe_meta}")
+    return jsonify({"ok": True}), 200
+
 @app.route('/api/user', methods=['GET'])
 def get_user():
     if 'user_id' not in session:
