@@ -5,6 +5,7 @@ import random
 import string
 import json
 import secrets
+import time
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, jsonify, session, redirect, url_for, render_template, send_from_directory, make_response
@@ -1156,6 +1157,59 @@ def get_request_headers(url, site):
         "Referer": f"{parsed.scheme}://{host}/"
     }
 
+
+def is_captcha_like_response(status_code, html_text):
+    text = (html_text or '').lower()
+    if status_code in (429, 503):
+        return True
+    captcha_markers = [
+        "captcha",
+        "robot check",
+        "enter the characters you see",
+        "automated access",
+        "sorry, we just need to make sure you're not a robot"
+    ]
+    return any(marker in text for marker in captcha_markers)
+
+
+def normalize_product_url(url, site):
+    """Normalize known product URLs to reduce anti-bot redirects and noisy params."""
+    if not url:
+        return url
+    if site != 'amazon':
+        return url
+    asin = extract_amazon_asin(url)
+    if asin:
+        return f"https://www.amazon.in/dp/{asin}"
+    return url
+
+
+def get_fetch_candidates(url, site):
+    """
+    Return candidate URLs to fetch in order.
+    Try canonicalized product URLs first where possible.
+    """
+    candidates = []
+    normalized = normalize_product_url(url, site)
+    candidates.append(normalized)
+    if normalized != url:
+        candidates.append(url)
+
+    if site == 'amazon':
+        asin = extract_amazon_asin(url)
+        if asin:
+            candidates.append(f"https://www.amazon.in/gp/aw/d/{asin}")
+            candidates.append(f"https://www.amazon.in/dp/{asin}?th=1&psc=1")
+
+    # Preserve order but remove duplicates.
+    deduped = []
+    seen = set()
+    for candidate in candidates:
+        if candidate and candidate not in seen:
+            deduped.append(candidate)
+            seen.add(candidate)
+    return deduped
+
 def get_site_info(url):
     url_lower = url.lower()
     if 'amazon' in url_lower:
@@ -1354,29 +1408,70 @@ def get_price():
 
     try:
         site, currency, currency_symbol = get_site_info(url)
-        headers = get_request_headers(url, site)
-
         session_client = requests.Session()
         if site == 'amazon':
             session_client.cookies.set("i18n-prefs", "INR")
             session_client.cookies.set("lc-main", "en_IN")
 
-        response = session_client.get(url, headers=headers, timeout=20, allow_redirects=True)
-        if response.status_code != 200:
-            return jsonify({"error": f"Failed to fetch page (Status: {response.status_code})"}), response.status_code
-        
-        soup = BeautifulSoup(response.content, "html.parser")
-        price = scrape_price(soup, site, currency_symbol)
+        fetch_candidates = get_fetch_candidates(url, site)
+        response = None
+        soup = None
+        price = None
+        saw_captcha = False
 
-        # Amazon fallback: canonical ASIN URL can be easier to parse than tracking/share URLs.
-        if price is None and site == 'amazon':
-            asin = extract_amazon_asin(url)
-            if asin:
-                amazon_url = f"https://www.amazon.in/dp/{asin}"
-                response = session_client.get(amazon_url, headers=headers, timeout=20, allow_redirects=True)
-                if response.status_code == 200:
-                    soup = BeautifulSoup(response.content, "html.parser")
-                    price = scrape_price(soup, site, currency_symbol)
+        # Try multiple candidates + slight header variations before failing.
+        header_variants = [
+            {},
+            {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"},
+        ]
+        for candidate_url in fetch_candidates:
+            for variant in header_variants:
+                headers = get_request_headers(candidate_url, site)
+                headers.update(variant)
+                current_response = session_client.get(candidate_url, headers=headers, timeout=20, allow_redirects=True)
+                current_html = current_response.text or ''
+                if is_captcha_like_response(current_response.status_code, current_html):
+                    saw_captcha = True
+                    time.sleep(0.6)
+                    continue
+                if current_response.status_code != 200:
+                    continue
+
+                current_soup = BeautifulSoup(current_response.content, "html.parser")
+                current_price = scrape_price(current_soup, site, currency_symbol)
+
+                if current_price is None:
+                    json_ld_prices = extract_json_ld_prices(current_soup)
+                    if json_ld_prices:
+                        current_price = min(json_ld_prices)
+
+                if current_price is None:
+                    candidates = extract_price_candidates(current_html)
+                    if candidates:
+                        current_price = min(candidates)
+
+                if current_price is not None:
+                    response = current_response
+                    soup = current_soup
+                    price = current_price
+                    break
+                else:
+                    # Keep the best non-captcha HTML response for name extraction/error diagnosis.
+                    response = current_response
+                    soup = current_soup
+            if price is not None:
+                break
+
+        if response is None:
+            # No useful response received.
+            status = 429 if saw_captcha else 502
+            if saw_captcha:
+                normalized = normalize_product_url(url, site)
+                return jsonify({
+                    "error": "Website temporarily blocked automated access (captcha). Please retry in a minute with a direct product URL.",
+                    "suggestedUrl": normalized
+                }), status
+            return jsonify({"error": "Could not fetch product page. Please verify the URL and try again."}), status
         
         # Try to get product name from title
         product_name = "Product"
@@ -1388,21 +1483,14 @@ def get_price():
             product_name = og_title.get("content").strip()
         
         if price is None:
-            html_text = response.text
-            json_ld_prices = extract_json_ld_prices(soup)
-            if json_ld_prices:
-                price = min(json_ld_prices)
-
-            if price is None:
-                # Extract from full HTML as last fallback.
-                candidates = extract_price_candidates(html_text)
-                if candidates:
-                    price = min(candidates)
-
-            if price is None:
-                if "captcha" in html_text.lower() or "robot check" in html_text.lower():
-                    return jsonify({"error": "Website blocked automated access (captcha). Try a direct product URL and retry later."}), 429
-                return jsonify({"error": "Could not find price on this page. Use a product page URL with visible price."}), 404
+            html_text = response.text if response is not None else ""
+            if is_captcha_like_response(response.status_code if response is not None else 0, html_text):
+                normalized = normalize_product_url(url, site)
+                return jsonify({
+                    "error": "Website temporarily blocked automated access (captcha). Please retry in a minute with a direct product URL.",
+                    "suggestedUrl": normalized
+                }), 429
+            return jsonify({"error": "Could not find price on this page. Use a product page URL with visible price."}), 404
         
         return jsonify({
             "price": price, "currency": currency, 
