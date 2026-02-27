@@ -1,5 +1,4 @@
 // Dashboard JavaScript - Main app functionality with celebration
-// FIXED: Simplified and more robust to prevent about:blank issues
 let trackers = [];
 let currentFilter = 'all';
 let currentTracker = null;
@@ -21,20 +20,6 @@ const API_BASE_URL = getApiBaseUrl();
 const nativeWindowOpen = (window && typeof window.open === 'function')
     ? window.open.bind(window)
     : null;
-
-// Block only invalid blank opens globally (including library calls).
-if (nativeWindowOpen) {
-    window.open = function(url, target, features) {
-        const u = typeof url === 'string' ? url.trim().toLowerCase() : '';
-        if (!u || u === 'about:blank' || u === 'about:' || u === 'null' || u === 'undefined') {
-            return null;
-        }
-        if (u.startsWith('javascript:') || u.startsWith('data:') || u.startsWith('vbscript:')) {
-            return null;
-        }
-        return nativeWindowOpen(url, target, features);
-    };
-}
 
 // Also add safe location wrapper
 const navigateTo = function(url) {
