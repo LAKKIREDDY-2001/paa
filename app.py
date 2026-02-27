@@ -1075,11 +1075,23 @@ def extract_price_candidates(text):
     patterns = [
         r'"price"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
         r'"salePrice"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
+        r'"currentPrice"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
+        r'"final_price"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
+        r'"amount"\s*:\s*"?([0-9][0-9,]*\.?[0-9]*)"?',
         r'₹\s*([0-9][0-9,]*\.?[0-9]*)',
         r'INR\s*([0-9][0-9,]*\.?[0-9]*)',
         r'\$\s*([0-9][0-9,]*\.?[0-9]*)',
         r'USD\s*([0-9][0-9,]*\.?[0-9]*)',
         r'£\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'GBP\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'€\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'EUR\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'¥\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'JPY\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'AUD\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'CAD\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'SGD\s*([0-9][0-9,]*\.?[0-9]*)',
+        r'AED\s*([0-9][0-9,]*\.?[0-9]*)',
     ]
     candidates = []
     for pattern in patterns:
@@ -1210,6 +1222,83 @@ def get_fetch_candidates(url, site):
             seen.add(candidate)
     return deduped
 
+
+CURRENCY_SYMBOLS = {
+    "USD": "$",
+    "INR": "₹",
+    "GBP": "£",
+    "EUR": "€",
+    "JPY": "¥",
+    "AUD": "A$",
+    "CAD": "C$",
+    "SGD": "S$",
+    "AED": "AED"
+}
+
+
+def currency_symbol_for(code):
+    return CURRENCY_SYMBOLS.get(code, "$")
+
+
+def infer_currency_from_url(url):
+    host = (urlparse(url).netloc or '').lower()
+    if any(tld in host for tld in ['.in', 'amazon.in', 'flipkart', 'myntra', 'ajio', 'meesho', 'snapdeal']):
+        return "INR"
+    if any(tld in host for tld in ['.co.uk', '.uk']):
+        return "GBP"
+    if any(tld in host for tld in ['.de', '.fr', '.es', '.it', '.nl', '.eu']):
+        return "EUR"
+    if any(tld in host for tld in ['.jp']):
+        return "JPY"
+    if any(tld in host for tld in ['.com.au']):
+        return "AUD"
+    if any(tld in host for tld in ['.ca']):
+        return "CAD"
+    if any(tld in host for tld in ['.sg']):
+        return "SGD"
+    if any(tld in host for tld in ['.ae']):
+        return "AED"
+    return "USD"
+
+
+def detect_currency_from_content(soup, html_text, fallback="USD"):
+    text = (html_text or "")
+
+    # 1) Explicit currency code from metadata
+    code_patterns = [
+        r'"priceCurrency"\s*:\s*"([A-Z]{3})"',
+        r'price:currency["\']?\s*content=["\']([A-Z]{3})',
+        r'currency["\']?\s*:\s*["\']([A-Z]{3})["\']'
+    ]
+    for pattern in code_patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            code = match.group(1).upper()
+            if code in CURRENCY_SYMBOLS:
+                return code, currency_symbol_for(code)
+
+    if soup:
+        meta_currency = soup.find("meta", attrs={"property": "product:price:currency"})
+        if meta_currency and meta_currency.get("content"):
+            code = str(meta_currency.get("content")).strip().upper()
+            if code in CURRENCY_SYMBOLS:
+                return code, currency_symbol_for(code)
+
+    # 2) Symbol detection fallback
+    symbol_order = [
+        ("₹", "INR"),
+        ("£", "GBP"),
+        ("€", "EUR"),
+        ("¥", "JPY"),
+        ("$", "USD"),
+    ]
+    for sym, code in symbol_order:
+        if sym in text:
+            return code, currency_symbol_for(code)
+
+    return fallback, currency_symbol_for(fallback)
+
+
 def get_site_info(url):
     url_lower = url.lower()
     if 'amazon' in url_lower:
@@ -1230,10 +1319,34 @@ def get_site_info(url):
     elif 'snapdeal' in url_lower:
         return 'snapdeal', 'INR', '₹'
     else:
-        return 'unknown', 'USD', '$'
+        inferred_currency = infer_currency_from_url(url)
+        return 'unknown', inferred_currency, currency_symbol_for(inferred_currency)
 
 def scrape_price(soup, site, currency_symbol):
     """Generic price scraper - improved to handle more cases"""
+
+    # Universal selectors used by many ecommerce sites globally.
+    universal_selectors = [
+        'meta[property="product:price:amount"]',
+        'meta[name="product:price:amount"]',
+        'meta[itemprop="price"]',
+        '[itemprop="price"]',
+        '[data-price]',
+        '[data-sale-price]',
+        '[data-product-price]',
+        '.price',
+        '.product-price',
+        '.sale-price',
+        '.current-price'
+    ]
+    for selector in universal_selectors:
+        elem = soup.select_one(selector)
+        if not elem:
+            continue
+        value = elem.get('content') if elem.name == 'meta' else elem.get('data-price') or elem.get('data-sale-price') or elem.get_text()
+        price = parse_price(value)
+        if price and 1 <= price <= 10000000:
+            return price
     
     # Try multiple selectors for Amazon
     if site == 'amazon':
@@ -1371,14 +1484,20 @@ def scrape_price(soup, site, currency_symbol):
             if price and 50 < price < 100000:
                 return price
     
-    # Try for $ symbol (USD/GBP)
-    price_elem = soup.find(string=re.compile(r'\$\s*[\d,]+\.?\d*'))
-    if price_elem:
-        nums = re.findall(r'\$\s*([\d,]+\.?\d*)', price_elem)
-        for match in nums:
-            price = parse_price(match.replace(',', ''))
-            if price and 1 < price < 10000:
-                return price
+    # Try for global symbols
+    for symbol_pattern, min_val, max_val in [
+        (r'\$\s*([\d,]+\.?\d*)', 1, 10000000),
+        (r'£\s*([\d,]+\.?\d*)', 1, 10000000),
+        (r'€\s*([\d,]+\.?\d*)', 1, 10000000),
+        (r'¥\s*([\d,]+\.?\d*)', 1, 10000000),
+    ]:
+        price_elem = soup.find(string=re.compile(symbol_pattern))
+        if price_elem:
+            nums = re.findall(symbol_pattern, price_elem)
+            for match in nums:
+                price = parse_price(match.replace(',', ''))
+                if price and min_val < price < max_val:
+                    return price
     
     return None
 
@@ -1451,6 +1570,13 @@ def get_price():
                         current_price = min(candidates)
 
                 if current_price is not None:
+                    detected_currency, detected_symbol = detect_currency_from_content(
+                        current_soup,
+                        current_html,
+                        fallback=currency
+                    )
+                    currency = detected_currency
+                    currency_symbol = detected_symbol
                     response = current_response
                     soup = current_soup
                     price = current_price
