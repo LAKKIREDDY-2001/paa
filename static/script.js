@@ -5,6 +5,7 @@ let currentTracker = null;
 let celebrationTracker = null;
 let isTrackerActionInProgress = false;
 let appInitialized = false;
+let dashboardUser = { username: 'User' };
 
 // Safe API_BASE_URL - fallback to empty string if window.location is not available
 const getApiBaseUrl = () => {
@@ -68,14 +69,14 @@ const celebrationColors = [
 ];
 
 const COMPANY_LOGOS = {
-    amazon: '/static/logos/amazon.svg',
-    flipkart: '/static/logos/flipkart.svg',
-    myntra: '/static/logos/myntra.svg',
-    ajio: '/static/logos/ajio.svg',
-    meesho: '/static/logos/meesho.svg',
-    snapdeal: '/static/logos/snapdeal.svg',
-    tatacliq: '/static/logos/tatacliq.svg',
-    reliance: '/static/logos/reliance.svg'
+    amazon: '/static/logos/amazon.svg?v=20260228',
+    flipkart: '/static/logos/flipkart.svg?v=20260228',
+    myntra: '/static/logos/myntra.svg?v=20260228',
+    ajio: '/static/logos/ajio.svg?v=20260228',
+    meesho: '/static/logos/meesho.svg?v=20260228',
+    snapdeal: '/static/logos/snapdeal.svg?v=20260228',
+    tatacliq: '/static/logos/tatacliq.svg?v=20260228',
+    reliance: '/static/logos/reliance.svg?v=20260228'
 };
 
 function initDashboardApp() {
@@ -88,6 +89,8 @@ function initDashboardApp() {
     initCelebration();
     startAutoRefresh();
     addManualRefreshButton();
+    initAiAssistant();
+    refreshAIInsights();
 }
 
 function handleLogout() {
@@ -337,6 +340,7 @@ async function loadUserData() {
             const user = await response.json();
             if (user.username) {
                 document.getElementById('user-greeting').textContent = 'Welcome, ' + user.username;
+                dashboardUser = user;
             }
         }
     } catch (error) {
@@ -675,11 +679,13 @@ function renderTrackers() {
         const safeName = escapeHtml(tracker.productName || 'Product');
         const safeUrlText = escapeHtml(trackerUrl);
         
-        return '<div class="tracker-card" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link"><div class="tracker-header"><div class="tracker-info"><div class="tracker-logo">' + getCompanyLogo(tracker.url) + '</div><h4 class="tracker-name">' + safeName + '</h4></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div><button type="button" class="tracker-url tracker-url-link" onclick="event.stopPropagation(); openTrackerUrlFromElement(this)">' + safeUrlText + '</button><div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.currentPrice + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.targetPrice + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div><div class="tracker-actions"><button class="tracker-action" onclick="viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button class="tracker-action" onclick="refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button class="tracker-action delete" onclick="deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
+        return '<div class="tracker-card tilt-3d" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link"><div class="tracker-header"><div class="tracker-info"><div class="tracker-logo">' + getCompanyLogo(tracker.url) + '</div><h4 class="tracker-name">' + safeName + '</h4></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div><button type="button" class="tracker-url tracker-url-link" onclick="event.stopPropagation(); openTrackerUrlFromElement(this)">' + safeUrlText + '</button><div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.currentPrice + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.targetPrice + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div><div class="tracker-actions"><button class="tracker-action" onclick="viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button class="tracker-action" onclick="refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button class="tracker-action delete" onclick="deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
     }).join('');
     
     attachTrackerCardClickHandlers();
+    initTracker3D();
     updateCounts();
+    refreshAIInsights();
 }
 
 function updateStats() {
@@ -695,6 +701,7 @@ function updateStats() {
         const avgSavings = trackers.length > 0 ? Math.round((totalSavings / trackers.length) * 10) / 10 : 0;
         document.getElementById('avg-savings').textContent = avgSavings + '%';
     }
+    refreshAIInsights();
 }
 
 function updateCounts() {
@@ -1465,4 +1472,188 @@ function submitFeedback() {
     
     showToast('success', 'Thank you for your feedback!');
     closeModal('feedback-modal');
+}
+
+// ==================== AI ACCOUNT FEATURES ====================
+
+function detectStore(url) {
+    const value = String(url || '').toLowerCase();
+    if (value.includes('amazon')) return 'Amazon';
+    if (value.includes('flipkart')) return 'Flipkart';
+    if (value.includes('myntra')) return 'Myntra';
+    if (value.includes('ajio')) return 'Ajio';
+    if (value.includes('meesho')) return 'Meesho';
+    if (value.includes('snapdeal')) return 'Snapdeal';
+    if (value.includes('tatacliq') || value.includes('tata')) return 'Tata CLiQ';
+    if (value.includes('reliance')) return 'Reliance Digital';
+    return 'Other';
+}
+
+function refreshAIInsights(showToastMessage = false) {
+    const scoreEl = document.getElementById('ai-health-score');
+    const coverageEl = document.getElementById('ai-coverage');
+    const fastDropEl = document.getElementById('ai-fast-drop');
+    const riskEl = document.getElementById('ai-risk-alerts');
+    const recommendationsEl = document.getElementById('ai-recommendations');
+    if (!scoreEl || !coverageEl || !fastDropEl || !riskEl || !recommendationsEl) return;
+
+    if (!trackers.length) {
+        scoreEl.textContent = '68/100';
+        coverageEl.textContent = '0 stores';
+        fastDropEl.textContent = '--';
+        riskEl.textContent = '1';
+        recommendationsEl.innerHTML = '<li>Add at least 3 trackers to activate stronger AI forecasting.</li><li>Use target price near 8-15% below current price for higher hit-rate.</li>';
+        return;
+    }
+
+    const uniqueStores = new Set(trackers.map((tracker) => detectStore(tracker.url)).filter((store) => store !== 'Other'));
+    const reached = trackers.filter((tracker) => Number(tracker.currentPrice) <= Number(tracker.targetPrice)).length;
+    const riskAlerts = trackers.filter((tracker) => !tracker.url || !/^https?:\/\//i.test(String(tracker.url))).length;
+    const speedCandidate = trackers
+        .filter((tracker) => tracker.createdAt)
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))[0];
+
+    const base = 55;
+    const score = Math.min(
+        99,
+        Math.round(base + Math.min(uniqueStores.size * 5, 25) + Math.min(reached * 2, 12) - Math.min(riskAlerts * 8, 20))
+    );
+
+    scoreEl.textContent = score + '/100';
+    coverageEl.textContent = uniqueStores.size + ' stores';
+    fastDropEl.textContent = speedCandidate ? (speedCandidate.productName || 'Tracked item').slice(0, 20) : '--';
+    riskEl.textContent = String(riskAlerts);
+
+    const recs = [];
+    if (uniqueStores.size < 3) recs.push('Track 3+ different stores to improve AI comparison and deal timing.');
+    if (reached === 0) recs.push('Lower one target by 5% to increase first successful alert probability.');
+    if (riskAlerts > 0) recs.push('Some links look invalid. Update broken URLs to keep auto-refresh healthy.');
+    recs.push('Use "Refresh All" during sale windows for higher precision alerts.');
+    recommendationsEl.innerHTML = recs.slice(0, 4).map((text) => '<li>' + text + '</li>').join('');
+
+    if (showToastMessage) {
+        showToast('success', 'AI insights refreshed for ' + (dashboardUser.username || 'your account'));
+    }
+}
+
+async function runAiAutofix() {
+    const healthPromise = fetch(API_BASE_URL + '/health', { method: 'GET' });
+    const userPromise = fetch(API_BASE_URL + '/api/user', { method: 'GET' });
+    const results = await Promise.allSettled([healthPromise, userPromise]);
+
+    if (results[0].status !== 'fulfilled' || !results[0].value.ok) {
+        showToast('error', 'Auto-fix detected server issue. Check deployment health.');
+        return;
+    }
+
+    try {
+        const raw = localStorage.getItem('settings');
+        if (raw) JSON.parse(raw);
+    } catch (e) {
+        localStorage.removeItem('settings');
+    }
+
+    loadTrackers();
+    startAutoRefresh();
+    refreshAIInsights(true);
+}
+
+// ==================== AI HELPER CHAT ====================
+
+function appendAiMessage(text, sender) {
+    const box = document.getElementById('ai-helper-messages');
+    if (!box) return;
+    const row = document.createElement('div');
+    row.className = 'ai-msg ' + (sender === 'user' ? 'user' : 'bot');
+    row.textContent = text;
+    box.appendChild(row);
+    box.scrollTop = box.scrollHeight;
+}
+
+function toggleAiHelper(forceOpen) {
+    const panel = document.getElementById('ai-helper-panel');
+    if (!panel) return;
+    const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('open');
+    panel.classList.toggle('open', shouldOpen);
+}
+
+function runAiCommand(input) {
+    const text = String(input || '').toLowerCase();
+    if (text.includes('tracker')) {
+        switchView('my-trackers');
+        return 'Opened My Trackers. I also refreshed AI insights for this account.';
+    }
+    if (text.includes('new') || text.includes('add')) {
+        switchView('new-alert');
+        return 'Opened New Alert view. Paste a product link to start tracking.';
+    }
+    if (text.includes('setting')) {
+        switchView('settings');
+        return 'Opened Settings. You can configure notifications, refresh, and backup here.';
+    }
+    if (text.includes('refresh')) {
+        autoRefreshAllPrices();
+        return 'Triggered refresh for all trackers.';
+    }
+    if (text.includes('fix') || text.includes('error')) {
+        runAiAutofix();
+        return 'Running account auto-fix and health checks now.';
+    }
+    if (text.includes('trend')) {
+        switchView('price-trends');
+        return 'Opened Price Trends. Pick a tracker to view history.';
+    }
+    return 'Try commands like: "open trackers", "refresh", "open settings", or "fix errors".';
+}
+
+function sendAiChatMessage() {
+    const input = document.getElementById('ai-chat-input');
+    if (!input) return;
+    const message = input.value.trim();
+    if (!message) return;
+    appendAiMessage(message, 'user');
+    const reply = runAiCommand(message);
+    appendAiMessage(reply, 'bot');
+    refreshAIInsights();
+    input.value = '';
+}
+
+function initAiAssistant() {
+    const toggle = document.getElementById('ai-helper-toggle');
+    const input = document.getElementById('ai-chat-input');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            toggleAiHelper();
+        });
+    }
+    if (input) {
+        input.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendAiChatMessage();
+            }
+        });
+    }
+    appendAiMessage('Hi ' + (dashboardUser.username || 'there') + ', I can navigate and auto-fix account issues.', 'bot');
+}
+
+// ==================== 3D TRACKER EFFECT ====================
+
+function initTracker3D() {
+    const cards = document.querySelectorAll('.tracker-card.tilt-3d');
+    cards.forEach((card) => {
+        if (card.dataset.tiltReady === '1') return;
+        card.dataset.tiltReady = '1';
+        card.addEventListener('mousemove', (event) => {
+            const rect = card.getBoundingClientRect();
+            const px = (event.clientX - rect.left) / rect.width;
+            const py = (event.clientY - rect.top) / rect.height;
+            const rotateY = (px - 0.5) * 10;
+            const rotateX = (0.5 - py) * 8;
+            card.style.transform = 'perspective(900px) rotateX(' + rotateX.toFixed(2) + 'deg) rotateY(' + rotateY.toFixed(2) + 'deg)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = '';
+        });
+    });
 }

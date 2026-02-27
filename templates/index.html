@@ -173,14 +173,14 @@
                         </button>
                         
                         <div class="supported-sites">
-                            <span><img class="brand-logo" src="/static/logos/amazon.svg" alt="Amazon logo"> Amazon</span>
-                            <span><img class="brand-logo" src="/static/logos/flipkart.svg" alt="Flipkart logo"> Flipkart</span>
-                            <span><img class="brand-logo" src="/static/logos/myntra.svg" alt="Myntra logo"> Myntra</span>
-                            <span><img class="brand-logo" src="/static/logos/ajio.svg" alt="Ajio logo"> Ajio</span>
-                            <span><img class="brand-logo" src="/static/logos/meesho.svg" alt="Meesho logo"> Meesho</span>
-                            <span><img class="brand-logo" src="/static/logos/snapdeal.svg" alt="Snapdeal logo"> Snapdeal</span>
-                            <span><img class="brand-logo" src="/static/logos/tatacliq.svg" alt="Tata CLiQ logo"> Tata CLiQ</span>
-                            <span><img class="brand-logo" src="/static/logos/reliance.svg" alt="Reliance Digital logo"> Reliance Digital</span>
+                            <span><img class="brand-logo" src="/static/logos/amazon.svg?v=20260228" alt="Amazon logo"> Amazon</span>
+                            <span><img class="brand-logo" src="/static/logos/flipkart.svg?v=20260228" alt="Flipkart logo"> Flipkart</span>
+                            <span><img class="brand-logo" src="/static/logos/myntra.svg?v=20260228" alt="Myntra logo"> Myntra</span>
+                            <span><img class="brand-logo" src="/static/logos/ajio.svg?v=20260228" alt="Ajio logo"> Ajio</span>
+                            <span><img class="brand-logo" src="/static/logos/meesho.svg?v=20260228" alt="Meesho logo"> Meesho</span>
+                            <span><img class="brand-logo" src="/static/logos/snapdeal.svg?v=20260228" alt="Snapdeal logo"> Snapdeal</span>
+                            <span><img class="brand-logo" src="/static/logos/tatacliq.svg?v=20260228" alt="Tata CLiQ logo"> Tata CLiQ</span>
+                            <span><img class="brand-logo" src="/static/logos/reliance.svg?v=20260228" alt="Reliance Digital logo"> Reliance Digital</span>
                         </div>
                     </div>
                 </div>
@@ -231,6 +231,41 @@
                             </div>
                         </div>
                     </div>
+
+                    <section class="ai-insights-panel" id="ai-insights-panel">
+                        <div class="ai-insights-head">
+                            <h3><i class="fa fa-brain"></i> AI Account Insights</h3>
+                            <button class="btn-secondary small" type="button" onclick="refreshAIInsights(true)">
+                                <i class="fa fa-rotate-right"></i> Re-analyze
+                            </button>
+                        </div>
+                        <div class="ai-insight-grid">
+                            <div class="ai-insight-box">
+                                <span class="ai-insight-label">Health Score</span>
+                                <span class="ai-insight-value" id="ai-health-score">--</span>
+                            </div>
+                            <div class="ai-insight-box">
+                                <span class="ai-insight-label">Coverage</span>
+                                <span class="ai-insight-value" id="ai-coverage">--</span>
+                            </div>
+                            <div class="ai-insight-box">
+                                <span class="ai-insight-label">Fastest Drop</span>
+                                <span class="ai-insight-value" id="ai-fast-drop">--</span>
+                            </div>
+                            <div class="ai-insight-box">
+                                <span class="ai-insight-label">Risk Alerts</span>
+                                <span class="ai-insight-value" id="ai-risk-alerts">--</span>
+                            </div>
+                        </div>
+                        <ul class="ai-recommendations" id="ai-recommendations">
+                            <li>Loading AI recommendations...</li>
+                        </ul>
+                        <div class="ai-insights-actions">
+                            <button class="action-btn secondary" type="button" onclick="runAiAutofix()">
+                                <i class="fa fa-shield"></i> Auto-Fix Account Issues
+                            </button>
+                        </div>
+                    </section>
 
                     <div id="trackers-list" class="trackers-grid">
                         <div class="empty-state">
@@ -668,5 +703,23 @@
 
     <script src="/static/script.js"></script>
     <script src="/static/self-heal.js"></script>
+
+    <div class="ai-helper" id="ai-helper">
+        <button class="ai-helper-toggle" id="ai-helper-toggle" type="button" aria-label="Open AI helper">
+            <i class="fa fa-robot"></i>
+            <span>AI Helper</span>
+        </button>
+        <div class="ai-helper-panel" id="ai-helper-panel">
+            <div class="ai-helper-header">
+                <strong>AI Navigation Bot</strong>
+                <button type="button" onclick="toggleAiHelper(false)"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="ai-helper-messages" id="ai-helper-messages"></div>
+            <div class="ai-helper-input">
+                <input type="text" id="ai-chat-input" placeholder="Ask: open trackers, refresh, settings...">
+                <button type="button" onclick="sendAiChatMessage()"><i class="fa fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
