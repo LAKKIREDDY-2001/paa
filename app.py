@@ -1452,16 +1452,24 @@ def ads_txt():
 @app.route('/sitemap.xml')
 def sitemap_xml():
     host = request.host_url.rstrip('/')
-    urls = [
-        "/", "/home", "/about", "/contact", "/privacy", "/terms", "/blog",
-        "/amp/home",
-        "/blog/how-to-track-product-prices-online",
-        "/blog/best-price-alert-tools-india",
-        "/blog/save-money-price-trackers",
-        "/blog/amazon-price-history",
-        "/signup", "/login"
+    entries = [
+        ("/", "2026-02-27", "daily", "1.0"),
+        ("/home", "2026-02-27", "weekly", "0.9"),
+        ("/about", "2026-02-27", "monthly", "0.6"),
+        ("/contact", "2026-02-27", "monthly", "0.6"),
+        ("/privacy", "2026-02-27", "yearly", "0.4"),
+        ("/terms", "2026-02-27", "yearly", "0.4"),
+        ("/blog", "2026-02-27", "weekly", "0.8"),
+        ("/amp/home", "2026-02-27", "weekly", "0.7"),
+        ("/blog/how-to-track-product-prices-online", "2026-02-27", "monthly", "0.7"),
+        ("/blog/best-price-alert-tools-india", "2026-02-27", "monthly", "0.7"),
+        ("/blog/save-money-price-trackers", "2026-02-27", "monthly", "0.7"),
+        ("/blog/amazon-price-history", "2026-02-27", "monthly", "0.7")
     ]
-    items = "\n".join([f"<url><loc>{host}{path}</loc></url>" for path in urls])
+    items = "\n".join([
+        f"<url><loc>{host}{path}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq><priority>{priority}</priority></url>"
+        for path, lastmod, freq, priority in entries
+    ])
     content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 {items}
@@ -1512,8 +1520,7 @@ def add_no_cache_headers(response):
         '/blog/how-to-track-product-prices-online',
         '/blog/best-price-alert-tools-india',
         '/blog/save-money-price-trackers',
-        '/blog/amazon-price-history',
-        '/signup', '/login'
+        '/blog/amazon-price-history'
     }
     if path in indexable:
         response.headers['X-Robots-Tag'] = 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
