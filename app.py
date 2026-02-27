@@ -1057,6 +1057,74 @@ def extract_price_candidates(text):
                 candidates.append(value)
     return candidates
 
+
+def extract_json_ld_prices(soup):
+    """Extract prices from JSON-LD scripts with nested Offer/Product structures."""
+    prices = []
+    if not soup:
+        return prices
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                lower_key = str(key).lower()
+                if lower_key in {"price", "lowprice", "highprice"}:
+                    parsed = parse_price(value)
+                    if parsed and 1 <= parsed <= 10000000:
+                        prices.append(parsed)
+                else:
+                    walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, (str, int, float)):
+            # Handle embedded text nodes with currency markers.
+            for candidate in extract_price_candidates(str(node)):
+                prices.append(candidate)
+
+    for script in soup.find_all('script', type='application/ld+json'):
+        script_text = script.string or script.get_text() or ''
+        if not script_text.strip():
+            continue
+        try:
+            payload = json.loads(script_text)
+            walk(payload)
+        except (json.JSONDecodeError, TypeError):
+            for candidate in extract_price_candidates(script_text):
+                prices.append(candidate)
+    return prices
+
+
+def extract_amazon_asin(url):
+    match = re.search(r"/(?:dp|gp/product)/([A-Z0-9]{10})", url, flags=re.IGNORECASE)
+    if not match:
+        return None
+    return match.group(1).upper()
+
+
+def get_request_headers(url, site):
+    parsed = urlparse(url)
+    host = parsed.netloc
+    language = "en-US,en;q=0.9"
+    if site in {"amazon", "flipkart", "myntra", "ajio", "meesho", "snapdeal"}:
+        language = "en-IN,en;q=0.9"
+    return {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": language,
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+        "Referer": f"{parsed.scheme}://{host}/"
+    }
+
 def get_site_info(url):
     url_lower = url.lower()
     if 'amazon' in url_lower:
@@ -1084,12 +1152,23 @@ def scrape_price(soup, site, currency_symbol):
     
     # Try multiple selectors for Amazon
     if site == 'amazon':
+        # Common Amazon rendered price element.
+        price_elem = soup.select_one("span.a-price span.a-offscreen")
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+
         # Try new Amazon price structure
         price_elem = soup.find("span", {"class": "a-price"})
         if price_elem:
             whole = price_elem.find("span", {"class": "a-price-whole"})
             if whole:
-                price = parse_price(whole.get_text())
+                fraction = price_elem.find("span", {"class": "a-price-fraction"})
+                whole_text = whole.get_text().replace(',', '').strip()
+                if fraction and fraction.get_text().strip():
+                    whole_text = f"{whole_text}.{fraction.get_text().strip()}"
+                price = parse_price(whole_text)
                 if price:
                     return price
         
@@ -1242,29 +1321,31 @@ def get_price():
     if parsed.hostname in ['localhost', '127.0.0.1', '0.0.0.0']:
         return jsonify({"error": "Local URLs are not allowed"}), 400
 
-    # Enhanced headers to avoid being blocked
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Cache-Control": "max-age=0",
-        "Referer": f"{parsed.scheme}://{parsed.netloc}/"
-    }
-
     try:
-        response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+        site, currency, currency_symbol = get_site_info(url)
+        headers = get_request_headers(url, site)
+
+        session_client = requests.Session()
+        if site == 'amazon':
+            session_client.cookies.set("i18n-prefs", "INR")
+            session_client.cookies.set("lc-main", "en_IN")
+
+        response = session_client.get(url, headers=headers, timeout=20, allow_redirects=True)
         if response.status_code != 200:
             return jsonify({"error": f"Failed to fetch page (Status: {response.status_code})"}), response.status_code
         
         soup = BeautifulSoup(response.content, "html.parser")
-        site, currency, currency_symbol = get_site_info(url)
         price = scrape_price(soup, site, currency_symbol)
+
+        # Amazon fallback: canonical ASIN URL can be easier to parse than tracking/share URLs.
+        if price is None and site == 'amazon':
+            asin = extract_amazon_asin(url)
+            if asin:
+                amazon_url = f"https://www.amazon.in/dp/{asin}"
+                response = session_client.get(amazon_url, headers=headers, timeout=20, allow_redirects=True)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, "html.parser")
+                    price = scrape_price(soup, site, currency_symbol)
         
         # Try to get product name from title
         product_name = "Product"
@@ -1277,12 +1358,9 @@ def get_price():
         
         if price is None:
             html_text = response.text
-            for script in soup.find_all('script', type='application/ld+json'):
-                if script.string:
-                    candidates = extract_price_candidates(script.string)
-                    if candidates:
-                        price = min(candidates)
-                        break
+            json_ld_prices = extract_json_ld_prices(soup)
+            if json_ld_prices:
+                price = min(json_ld_prices)
 
             if price is None:
                 # Extract from full HTML as last fallback.
@@ -1375,7 +1453,7 @@ def catch_all(path):
             return redirect(url_for('login'))
         return render_template('index.html')
     
-    # For known routes, render the appropriate template
+    # For known exact routes, render the appropriate template
     known_routes = {
         'home': 'home.html',
         'about': 'about.html',
@@ -1387,14 +1465,12 @@ def catch_all(path):
         'login': 'login.html',
         'forgot-password': 'forgot-password.html',
     }
-    
-    # Check if it's a known route
-    for route, template in known_routes.items():
-        if path == route or path.startswith(route + '/'):
-            return render_template(template)
-    
-    # Default to home page for unknown routes
-    return render_template('home.html')
+
+    if path in known_routes:
+        return render_template(known_routes[path])
+
+    # Unknown route should be a true 404 (avoid soft-404 duplicate content).
+    return render_template('error.html', error="Page not found"), 404
 
 @app.after_request
 def add_no_cache_headers(response):
@@ -1406,10 +1482,12 @@ def add_no_cache_headers(response):
         '/blog/best-price-alert-tools-india',
         '/blog/save-money-price-trackers',
         '/blog/amazon-price-history',
-        '/signup', '/login', '/dashboard'
+        '/signup', '/login'
     }
     if path in indexable:
         response.headers['X-Robots-Tag'] = 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'
+    elif path.startswith('/api/') or path == '/dashboard' or path.startswith('/dashboard/') or response.status_code >= 400:
+        response.headers['X-Robots-Tag'] = 'noindex, nofollow'
 
     if response.content_type and response.content_type.startswith('text/html'):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
