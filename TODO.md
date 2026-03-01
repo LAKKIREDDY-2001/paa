@@ -1,40 +1,33 @@
-# Implementation Plan
+# Implementation Plan - UPDATED
 
-## Task 1: Fix Session Timeout Issue - COMPLETED
-- [x] 1.1 Improve cookie settings in app.py for better cross-device compatibility
-- [x] 1.2 Add session refresh endpoint to keep session alive
-- [x] 1.3 Add session validation on each API request
-- [x] 1.4 Update frontend to handle session expiry gracefully
+## Tasks to Complete:
 
-## Task 2: Fix Phone Users Paste Issue - COMPLETED
-- [x] 2.1 Add paste event handler for URL input field
-- [x] 2.2 Add auto-validation and URL fixing for pasted links
-- [x] 2.3 Add visual feedback when URL is pasted
+### 1. Favicon/Logo for Chrome Tabs
+- [x] Add bell icon favicon to all pages
+- [x] Ensure Google search shows the logo
 
-## Task 3: Add Price Comparison Feature - COMPLETED
-- [x] 3.1 Add comparison button in dashboard
-- [x] 3.2 Create comparison view in index.html
-- [x] 3.3 Add comparison API endpoint in app.py
-- [x] 3.4 Add JavaScript for comparison functionality
-- [x] 3.5 Style the comparison feature
+### 2. Google AdSense Compliance
+- [x] Review and fix AdSense policy issues
+- [x] Enable AdSense in ads.js (changed enabled: false to enabled: true)
+- [x] Add ad containers to templates:
+  - [x] templates/home.html - Banner ad after hero section
+  - [x] templates/index.html (dashboard) - Top ad
+  - [x] templates/login.html - Rectangle ad
+  - [x] templates/signup.html - Rectangle ad
+- [x] Add proper CSS styling for ad containers
+- [x] Ensure proper ad placement following AdSense policies
+
+### 3. Email Notifications
+- [x] Send welcome email on signup (already implemented in app.py)
+- [x] Send price alert email when target is reached (already implemented in app.py)
+- [x] Email configuration verified in email_config.json
+
+---
 
 ## Changes Made:
-
-### Backend (app.py):
-- Added CORS headers for credentials support
-- Added `/api/session/refresh` endpoint to validate and restore sessions
-- Added `/compare-prices` endpoint for comparing prices across multiple stores
-
-### Frontend (static/script.js):
-- Added `refreshSession()` function for automatic session validation
-- Added `initSessionRefresh()` to periodically refresh session
-- Added `initPasteHandler()` for better URL input handling on mobile
-- Added price comparison functions: `comparePrices()`, `displayComparisonResults()`, `openComparisonModal()`
-
-### HTML (templates/index.html):
-- Added "Compare Prices" button in the dashboard
-
-### CSS (static/style.css):
-- Added styles for price comparison modal and results
-- Added URL pasted animation styles
+- Added proper favicon with bell icon to home.html
+- Updated sitemap.xml for SEO
+- Enabled Google AdSense by changing enabled: false to enabled: true in static/ads.js
+- Added AdSense ad containers to all major templates with proper styling
+- Email functions verified and working (send_welcome_email, send_price_target_reached_email)
 

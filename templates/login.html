@@ -16,7 +16,8 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Login - AI Price Alert">
     <meta name="twitter:description" content="Access your price trackers and alerts.">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔔</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="apple-touch-icon" href="/static/favicon.svg">
     <link rel="canonical" href="https://pricealerter.in/login">
     <link rel="stylesheet" href="/static/auth.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -80,6 +81,16 @@
                 <p>Don't have an account? <a href="/signup">Sign Up</a></p>
             </div>
 
+            <!-- AdSense Ad - Login Page -->
+            <div class="ad-login-page">
+                <ins class="adsbygoogle"
+                     style="display:block; text-align:center;"
+                     data-ad-client="ca-pub-1181608933401999"
+                     data-ad-slot="7186431191"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+            </div>
+
             <div class="divider">
                 <span>Trusted by thousands</span>
             </div>
@@ -134,7 +145,17 @@
 
     <script src="/static/auth.js"></script>
     <script src="/static/self-heal.js"></script>
+    <script src="/static/ads.js"></script>
     <script>
+        // Initialize AdSense ads
+        (function() {
+            try {
+                (adsbygoogle = window.adsbygoogle || []).push({});
+            } catch(e) {
+                console.log('AdSense initialization:', e);
+            }
+        })();
+        
         // Direct click handler for login button
         document.addEventListener('DOMContentLoaded', function() {
             const loginBtn = document.getElementById('login-btn');

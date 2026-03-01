@@ -770,3 +770,35 @@ h1, h2, h3 {
         transform: none !important;
     }
 }
+
+/* AdSense Ad Container Styles */
+.ad-login-page {
+    width: 100%;
+    min-height: 90px;
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.ad-login-page ins {
+    width: 100%;
+    min-height: 90px;
+}
+
+/* AdSense Ad Container Styles - Signup */
+.ad-signup-page {
+    width: 100%;
+    min-height: 90px;
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.ad-signup-page ins {
+    width: 100%;
+    min-height: 90px;
+}

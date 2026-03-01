@@ -154,6 +154,16 @@
             </div>
 
             <div class="app-main">
+                <!-- AdSense Ad - Dashboard Top -->
+                <div class="ad-dashboard-top">
+                    <ins class="adsbygoogle"
+                         style="display:block; text-align:center;"
+                         data-ad-client="ca-pub-1181608933401999"
+                         data-ad-slot="7186431191"
+                         data-ad-format="auto"
+                         data-full-width-responsive="true"></ins>
+                </div>
+
                 <!-- New Alert View -->
                 <div id="view-new-alert" class="view active">
                     <div class="input-container">
@@ -719,6 +729,17 @@
 
     <script src="/static/script.js?v=20260228b"></script>
     <script src="/static/self-heal.js?v=20260228b"></script>
+    <script src="/static/ads.js"></script>
+    <script>
+        // Initialize AdSense ads
+        (function() {
+            try {
+                (adsbygoogle = window.adsbygoogle || []).push({});
+            } catch(e) {
+                console.log('AdSense initialization:', e);
+            }
+        })();
+    </script>
 
     <div class="ai-helper" id="ai-helper">
         <button class="ai-helper-toggle" id="ai-helper-toggle" type="button" aria-label="Open AI helper" onclick="toggleAiHelper()">

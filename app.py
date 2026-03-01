@@ -389,6 +389,65 @@ def send_price_target_reached_email(to_email, product_name, product_url, current
         html_body=html_body
     )
 
+
+def send_welcome_email(to_email, username):
+    """Send welcome email to new users"""
+    host_url = EMAIL_CONFIG.get('host_url', 'https://pricealerter.in')
+    login_url = f"{host_url}/login"
+    dashboard_url = f"{host_url}/dashboard"
+    
+    html_body = f'''
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Welcome to AI Price Alert</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; width: 60px; height: 60px; background: linear-gradient(135deg, #FF6B35, #F7931E); border-radius: 14px; line-height: 60px; font-size: 28px;">
+                🔔
+            </div>
+        </div>
+        <h1 style="color: #1a1a2e; text-align: center; margin-bottom: 12px;">Welcome to AI Price Alert, {username}!</h1>
+        <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+            Thank you for joining <strong>AI Price Alert</strong> - your personal shopping assistant for tracking product prices and getting instant alerts when prices drop!
+        </p>
+        
+        <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 24px 0;">
+            <h3 style="color: #0f172a; margin-top: 0;">Here's how to get started:</h3>
+            <ol style="color: #334155; line-height: 1.8;">
+                <li><strong>Go to your dashboard:</strong> Add product links from Amazon, Flipkart, Myntra, and 100+ more stores</li>
+                <li><strong>Set your target price:</strong> Choose the price you want to pay</li>
+                <li><strong>Get instant alerts:</strong> We'll email you when prices drop to your target!</li>
+            </ol>
+        </div>
+        
+        <div style="text-align: center; margin: 32px 0;">
+            <a href="{dashboard_url}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #FF6B35, #F7931E); color: white; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 16px;">
+                🚀 Start Tracking Now
+            </a>
+        </div>
+        
+        <p style="color: #64748b; font-size: 14px; text-align: center;">
+            It's completely free to use! Track as many products as you want.
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
+        
+        <p style="color: #94a3b8; font-size: 12px; text-align: center;">
+            Need help? Reply to this email or contact us at support@pricealerter.in<br>
+            © 2024 AI Price Alert. All rights reserved.
+        </p>
+    </body>
+    </html>
+    '''
+    return send_mail(
+        to_email=to_email,
+        subject=f"🎉 Welcome to AI Price Alert, {username}! Start saving now",
+        html_body=html_body
+    )
+
 # ==================== DATABASE ====================
 
 def init_db():
@@ -584,6 +643,12 @@ def signup():
             user_id = cursor.lastrowid
             conn.commit()
             conn.close()
+
+            # Send welcome email to new user
+            try:
+                send_welcome_email(email, username)
+            except Exception as e:
+                print(f"Welcome email send error: {e}")
 
             # DO NOT auto-login - user must sign in manually after signup
             # Create JSON response - redirect to login page after signup
@@ -790,8 +855,10 @@ def login():
                 return response_data, 200
             else:
                 conn.close()
-                return jsonify({"error": "Invalid credentials"}), 401
+                print(f"Login failed - invalid credentials for: {email}")
+                return jsonify({"error": "Invalid credentials. Please check your email and password."}), 401
         except Exception as e:
+            print(f"Login error: {e}")
             return jsonify({"error": f"Login failed: {str(e)}"}), 500
     
     return render_template('login.html')

@@ -2751,3 +2751,55 @@ input:checked + .slider:before {
     border-color: #38ef7d !important;
     box-shadow: 0 0 0 4px rgba(56, 239, 125, 0.2) !important;
 }
+
+/* AdSense Ad Container Styles */
+.ad-dashboard-top {
+    width: 100%;
+    min-height: 90px;
+    margin: 10px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.ad-dashboard-top ins {
+    width: 100%;
+    min-height: 90px;
+}
+
+/* Ad placeholder styles */
+.ad-placeholder {
+    width: 100%;
+    min-height: 90px;
+    background: #f5f5f5;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+}
+
+.ad-placeholder-content {
+    text-align: center;
+}
+
+.ad-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #999;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.ad-placeholder-box {
+    background: #eee;
+    padding: 15px 30px;
+    border-radius: 4px;
+    color: #999;
+}
+
+.ad-placeholder-box i {
+    margin-right: 5px;
+}
