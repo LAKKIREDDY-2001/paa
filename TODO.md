@@ -14,6 +14,27 @@ Fix the about:blank issue that's causing the page to show blank in the browser.
 - [x] 5. Test the changes locally
 - [x] 6. Push changes to GitHub
 
+## Google AdSense Implementation - COMPLETED ✓
+
+### Tasks Completed
+
+1. ✅ **Enable AdSense** - Changed `enabled: false` to `enabled: true` in `static/ads.js`
+2. ✅ **Add Ad Containers** - Added banner ad container to home.html after CTA buttons
+3. ✅ **Add CSS Styles** - Added styling for ad containers in home.html
+4. ✅ **Load ads.js** - Added script tag to load ads.js in home.html
+
+### Files Modified
+- `static/ads.js` - Enabled ads
+- `templates/home.html` - Added ad container and styles
+- `TODO.md` - Updated with completed tasks
+
+### Email Notifications - ALREADY IMPLEMENTED ✅
+The email notification functions are already implemented in app.py:
+- `send_welcome_email()` - Sends welcome email on signup
+- `send_price_target_reached_email()` - Sends price alert when target is reached
+
+Both functions are properly integrated and will work when email is configured.
+
 ## Session Persistence Fix - COMPLETED ✓
 
 ### Issues Fixed

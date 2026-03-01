@@ -36,9 +36,9 @@ const AdSenseConfig = {
     },
     
     // Enable/disable ads (set to false to disable ads completely)
-    enabled: false,
+    enabled: true,
     
-    // Test mode (shows placeholder ads when false)
+    // Test mode (shows placeholder ads when false) - set to true for testing
     testMode: false
 };
 

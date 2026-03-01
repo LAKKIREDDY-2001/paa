@@ -104,6 +104,16 @@
                 </a>
             </div>
 
+            <!-- AdSense Banner Ad -->
+            <div class="ad-banner-container">
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-1181608933401999"
+                     data-ad-slot="7186431191"
+                     data-ad-format="horizontal"
+                     data-full-width-responsive="true"></ins>
+            </div>
+
             <div class="trusted-by">
                 <p>Built for smart shoppers who want better timing on every purchase</p>
                 <div class="store-logos">
@@ -529,8 +539,25 @@
             display: flex;
             justify-content: center;
             gap: 16px;
-            margin-bottom: 60px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
+        }
+        
+        /* AdSense Ad Container */
+        .ad-banner-container {
+            width: 100%;
+            max-width: 728px;
+            margin: 0 auto 40px;
+            min-height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        .ad-signup-page {
+            width: 100%;
+            min-height: 90px;
         }
         
         .btn-hero {
@@ -1347,5 +1374,6 @@
             });
         })();
     </script>
+    <script src="/static/ads.js"></script>
 </body>
 </html>
