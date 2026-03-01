@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - AI Price Alert | Never Miss a Price Drop</title>
+
+    <meta name="description" content="Create your free account on AI Price Alert. Start tracking product prices across Amazon, Flipkart, Myntra and 100+ stores. Never miss a price drop again!">
+    <meta name="keywords" content="price tracker, price alert, sign up, register, amazon price tracker, flipkart price tracker, myntra price alert, save money shopping">
+    <meta name="robots" content="noindex,follow">
+    <meta property="og:title" content="Sign Up - AI Price Alert | Never Miss a Price Drop">
+    <meta property="og:description" content="Create your free account and start tracking prices across 100+ stores. Save money on every purchase!">
+    <meta property="og:image" content="https://pricealerter.in/static/og-image.svg">
+    <meta property="og:url" content="https://pricealerter.in/signup">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sign Up - AI Price Alert">
+    <meta name="twitter:description" content="Never miss a price drop again! Track prices across 100+ stores.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔔</text></svg>">
+    <link rel="canonical" href="https://pricealerter.in/signup">
+    <link rel="stylesheet" href="/static/auth.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google AdSense -->
+    <meta name="google-adsense-account" content="ca-pub-1181608933401999">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1181608933401999"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div class="scene">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid"></div>
+    </div>
+<div class="auth-container tilt-root" data-tilt="7">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">
+                    <i class="fa fa-bell"></i>
+                    <span>AI Price Alert</span>
+                </div>
+                <h1>Create Account</h1>
+                <p>Start tracking prices and save money</p>
+            </div>
+
+            <!-- Step 1: Basic Info - Using div instead of form to prevent default submission -->
+            <div id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="username"><i class="fa fa-user"></i> Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email"><i class="fa fa-envelope"></i> Email</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="phone"><i class="fa fa-phone"></i> Phone (Optional)</label>
+                    <input type="tel" id="phone" name="phone" placeholder="Enter your phone number">
+                </div>
+
+                <div class="form-group">
+                    <label for="password"><i class="fa fa-lock"></i> Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password"><i class="fa fa-lock"></i> Confirm Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="terms" required>
+                        <span>I agree to the <a href="/terms">Terms & Conditions</a></span>
+                    </label>
+                </div>
+
+                <button type="button" class="auth-btn" id="signup-btn" onclick="handleSignupClick()">
+                    <span>Create Account</span>
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+
+                <div id="error-message" class="error-message" style="display: none;"></div>
+            </div>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="/login">Sign In</a></p>
+            </div>
+
+            <div class="divider">
+                <span>Trusted by thousands</span>
+            </div>
+
+            <div class="auth-features">
+                <div class="features-list">
+                    <div class="feature">
+                        <i class="fa fa-bell"></i>
+                        <div>
+                            <h4>Real-time Alerts</h4>
+                            <p>Get notified when prices drop</p>
+                        </div>
+                    </div>
+                    <div class="feature">
+                        <i class="fa fa-chart-line"></i>
+                        <div>
+                            <h4>Price History</h4>
+                            <p>Track price trends over time</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="auth-features">
+            <h2>Smart Price Tracking</h2>
+            <div class="features-list">
+                <div class="feature">
+                    <i class="fa fa-bell"></i>
+                    <div>
+                        <h4>Real-time Alerts</h4>
+                        <p>Get notified instantly when prices drop</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fa fa-chart-line"></i>
+                    <div>
+                        <h4>Price History</h4>
+                        <p>Track price trends over time</p>
+                    </div>
+                </div>
+                <div class="feature">
+                    <i class="fa fa-globe"></i>
+                    <div>
+                        <h4>Multi-Store</h4>
+                        <p>Compare prices across Amazon, Flipkart & more</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/auth.js"></script>
+    <script src="/static/self-heal.js"></script>
+    <script>
+        // Direct click handler for signup button
+        document.addEventListener('DOMContentLoaded', function() {
+            const signupBtn = document.getElementById('signup-btn');
+            if (signupBtn) {
+                signupBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Call the signup handler directly
+                    if (typeof handleSignup === 'function') {
+                        handleSignup({ preventDefault: function() {}, stopPropagation: function() {}, target: document.getElementById('signup-form') });
+                    }
+                    return false;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

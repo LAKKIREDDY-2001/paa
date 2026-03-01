@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PriceAlerter.in - Track Product Prices & Get Price Drop Alerts</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Track product prices on Amazon, Flipkart, Myntra, Ajio, Meesho and more. Set target prices and get instant alerts when prices drop on PriceAlerter.in.">
+    <meta name="keywords" content="price tracker, price alert, deal finder, amazon price tracker, flipkart price tracker, myntra price alert, save money shopping, price comparison, price drop alerts, online shopping deals">
+    <meta name="author" content="AI Price Alert">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1">
+    <link rel="canonical" href="https://pricealerter.in">
+    <link rel="amphtml" href="https://pricealerter.in/amp/home">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pricealerter.in">
+    <meta property="og:title" content="PriceAlerter.in - Track Product Prices & Save Money">
+    <meta property="og:description" content="Set target prices and get instant price drop alerts across top shopping websites.">
+    <meta property="og:image" content="https://pricealerter.in/static/og-image.svg">
+    <meta property="og:site_name" content="Price Alerter AI">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://pricealerter.in">
+    <meta property="twitter:title" content="PriceAlerter.in - Price Drop Alerts">
+    <meta property="twitter:description" content="Track product prices and get alerts when prices fall below your target.">
+    <meta property="twitter:image" content="https://pricealerter.in/static/og-image.svg">
+    
+    <!-- Schema Markup -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Price Alerter AI",
+        "description": "Track live prices of products from Amazon, Flipkart, Myntra, Ajio, Meesho and 100+ shopping sites. Add your shopping links and get instant alerts when prices drop.",
+        "url": "https://pricealerter.in",
+        "applicationCategory": "ShoppingApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR",
+            "availability": "https://schema.org/InStock"
+        }
+    }
+    </script>
+    
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>">
+    
+    <!-- Google AdSense -->
+    <meta name="google-adsense-account" content="ca-pub-1181608933401999">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1181608933401999"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div class="scene">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid"></div>
+    </div>
+
+    <div class="landing-container">
+        <!-- Header -->
+        <header class="landing-header">
+            <div class="logo">
+                <i class="fa fa-bell"></i>
+                <span>Price Alerter AI</span>
+            </div>
+            <button class="mobile-menu-btn" onclick="toggleMenu()">
+                <i class="fa fa-bars"></i>
+            </button>
+            <nav class="landing-nav" id="mainNav">
+                <a href="/about">About</a>
+                <a href="/blog">Blog</a>
+                <a href="/contact">Contact</a>
+                <a href="/login" class="btn-nav">Sign In</a>
+                <a href="/signup" class="btn-primary">Get Started</a>
+            </nav>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero">
+            <h1>Never Miss a <span class="gradient-text">Price Drop</span> Again</h1>
+            <p class="hero-subtitle">Smart AI-powered price tracking for Amazon, Flipkart, Myntra, Ajio, Meesho, and 100+ stores. Save money on every purchase with instant price drop alerts.</p>
+            
+            <div class="cta-buttons">
+                <a href="/signup" class="btn-hero primary">
+                    <i class="fa fa-rocket"></i>
+                    Start Free Tracking
+                </a>
+                <a href="/blog" class="btn-hero secondary">
+                    <i class="fa fa-book"></i>
+                    How It Works
+                </a>
+            </div>
+
+            <div class="trusted-by">
+                <p>Built for smart shoppers who want better timing on every purchase</p>
+                <div class="store-logos">
+                    <span><img class="brand-logo" src="/static/logos/amazon.svg" alt="Amazon logo" loading="lazy"> Amazon</span>
+                    <span><img class="brand-logo" src="/static/logos/flipkart.svg" alt="Flipkart logo" loading="lazy"> Flipkart</span>
+                    <span><img class="brand-logo" src="/static/logos/myntra.svg" alt="Myntra logo" loading="lazy"> Myntra</span>
+                    <span><img class="brand-logo" src="/static/logos/ajio.svg" alt="Ajio logo" loading="lazy"> Ajio</span>
+                    <span><img class="brand-logo" src="/static/logos/meesho.svg" alt="Meesho logo" loading="lazy"> Meesho</span>
+                    <span><img class="brand-logo" src="/static/logos/snapdeal.svg" alt="Snapdeal logo" loading="lazy"> Snapdeal</span>
+                    <span><img class="brand-logo" src="/static/logos/tatacliq.svg" alt="Tata CLiQ logo" loading="lazy"> Tata CLiQ</span>
+                    <span><img class="brand-logo" src="/static/logos/reliance.svg" alt="Reliance Digital logo" loading="lazy"> Reliance Digital</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features">
+            <h2>Why Choose AI Price Alert?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa fa-bolt"></i>
+                    </div>
+                    <h3>Instant Alerts</h3>
+                    <p>Get notified immediately via email, Telegram, or WhatsApp when prices drop. Never miss a deal again with our real-time monitoring system.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa fa-brain"></i>
+                    </div>
+                    <h3>AI Price Prediction</h3>
+                    <p>Our advanced AI analyzes price history and predicts future drops. Know the best time to buy with confidence using data-driven insights.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa fa-globe"></i>
+                    </div>
+                    <h3>100+ Stores Supported</h3>
+                    <p>Track prices across these popular stores:</p>
+                    <div class="supported-stores-grid">
+                        <span class="store-tag"><img src="/static/logos/amazon.svg" alt="Amazon" loading="lazy"> Amazon</span>
+                        <span class="store-tag"><img src="/static/logos/flipkart.svg" alt="Flipkart" loading="lazy"> Flipkart</span>
+                        <span class="store-tag"><img src="/static/logos/myntra.svg" alt="Myntra" loading="lazy"> Myntra</span>
+                        <span class="store-tag"><img src="/static/logos/ajio.svg" alt="Ajio" loading="lazy"> Ajio</span>
+                        <span class="store-tag"><img src="/static/logos/meesho.svg" alt="Meesho" loading="lazy"> Meesho</span>
+                        <span class="store-tag"><img src="/static/logos/snapdeal.svg" alt="Snapdeal" loading="lazy"> Snapdeal</span>
+                        <span class="store-tag"><img src="/static/logos/tatacliq.svg" alt="Tata CLiQ" loading="lazy"> Tata CLiQ</span>
+                        <span class="store-tag"><img src="/static/logos/reliance.svg" alt="Reliance Digital" loading="lazy"> Reliance Digital</span>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa fa-chart-line"></i>
+                    </div>
+                    <h3>Price History Charts</h3>
+                    <p>View detailed price history graphs for any product. Understand price trends and make informed buying decisions with historical data.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa fa-shield-alt"></i>
+                    </div>
+                    <h3>Secure & Private</h3>
+                    <p>Your data is encrypted and secure. We never share your personal information. Built with enterprise-grade security standards.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa fa-mobile-alt"></i>
+                    </div>
+                    <h3>Mobile Friendly</h3>
+                    <p>Access your price trackers from any device. Our responsive design works perfectly on desktop, tablet, and mobile browsers.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="ai-features">
+            <h2>AI Features Built For Faster Decisions</h2>
+            <div class="ai-features-grid">
+                <div class="ai-feature-card">
+                    <div class="ai-feature-head">
+                        <i class="fa fa-robot"></i>
+                        <h3>AI Deal Assistant</h3>
+                    </div>
+                    <p>Converts your product link into a tracked alert in seconds and recommends a realistic buy target.</p>
+                </div>
+                <div class="ai-feature-card">
+                    <div class="ai-feature-head">
+                        <i class="fa fa-wave-square"></i>
+                        <h3>Price Pattern Detection</h3>
+                    </div>
+                    <p>Detects recurring drop cycles and helps you avoid buying at temporary peaks.</p>
+                </div>
+                <div class="ai-feature-card">
+                    <div class="ai-feature-head">
+                        <i class="fa fa-sliders"></i>
+                        <h3>Smart Alert Filtering</h3>
+                    </div>
+                    <p>Notifies only for meaningful drops so your alerts stay useful instead of noisy.</p>
+                </div>
+                <div class="ai-feature-card">
+                    <div class="ai-feature-head">
+                        <i class="fa fa-compass"></i>
+                        <h3>Store Navigator</h3>
+                    </div>
+                    <p>Helps you compare timing across Amazon, Flipkart, Myntra, Ajio, Meesho, Snapdeal, Tata CLiQ, and Reliance Digital.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="how-it-works">
+            <h2>How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>Paste Product Link</h4>
+                        <p>Copy the product URL from any supported store and paste it into our tracking dashboard.</p>
+                    </div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>Set Target Price</h4>
+                        <p>Choose your desired target price. We'll notify you when the price drops to that level or below.</p>
+                    </div>
+                </div>
+                <div class="step-connector"></div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>Get Instant Alerts</h4>
+                        <p>Receive instant notifications via email, Telegram, or WhatsApp when prices drop. Buy at the perfect time!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="stats-section">
+            <div class="stat-item">
+                <span class="stat-number">24/7</span>
+                <span class="stat-label">Price Monitoring</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">100+</span>
+                <span class="stat-label">Supported Stores</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">Real-time</span>
+                <span class="stat-label">Alert Delivery</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">Email + Chat</span>
+                <span class="stat-label">Notification Channels</span>
+            </div>
+        </section>
+
+        <!-- Testimonials -->
+        <section class="testimonials">
+            <h2>What Our Users Say</h2>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                    </div>
+                    <p>"Saved ₹15,000 on my laptop purchase! The price alert came at the perfect time. Best price tracking tool in India!"</p>
+                    <div class="testimonial-author">
+                        <strong>Rajesh K.</strong>
+                        <span>Software Engineer, Bangalore</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                    </div>
+                    <p>"The AI predictions are surprisingly accurate! I always wait for the price drop alerts now. Got my washing machine at 40% off!"</p>
+                    <div class="testimonial-author">
+                        <strong>Priya S.</strong>
+                        <span>Marketing Manager, Mumbai</span>
+                    </div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-stars">
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star"></i>
+                        <i class="fa fa-star-half-alt"></i>
+                    </div>
+                    <p>"Best investment for online shoppers! The Telegram integration is amazing. Instant alerts work like magic!"</p>
+                    <div class="testimonial-author">
+                        <strong>Amit M.</strong>
+                        <span>Business Analyst, Delhi</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="faq-section">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-grid">
+                <div class="faq-item">
+                    <h4>Is AI Price Alert free to use?</h4>
+                    <p>Yes! Our basic price tracking features are completely free. We also offer premium plans with advanced features like AI predictions and unlimited trackers.</p>
+                </div>
+                <div class="faq-item">
+                    <h4>Which stores can I track?</h4>
+                    <div class="faq-stores">
+                        <span class="faq-store"><img src="/static/logos/amazon.svg" alt="Amazon" loading="lazy"> Amazon</span>
+                        <span class="faq-store"><img src="/static/logos/flipkart.svg" alt="Flipkart" loading="lazy"> Flipkart</span>
+                        <span class="faq-store"><img src="/static/logos/myntra.svg" alt="Myntra" loading="lazy"> Myntra</span>
+                        <span class="faq-store"><img src="/static/logos/ajio.svg" alt="Ajio" loading="lazy"> Ajio</span>
+                        <span class="faq-store"><img src="/static/logos/meesho.svg" alt="Meesho" loading="lazy"> Meesho</span>
+                        <span class="faq-store"><img src="/static/logos/snapdeal.svg" alt="Snapdeal" loading="lazy"> Snapdeal</span>
+                        <span class="faq-store"><img src="/static/logos/tatacliq.svg" alt="Tata CLiQ" loading="lazy"> Tata CLiQ</span>
+                        <span class="faq-store"><img src="/static/logos/reliance.svg" alt="Reliance Digital" loading="lazy"> Reliance Digital</span>
+                    </div>
+                    <p style="margin-top: 8px;">Plus 90+ more Indian and international stores.</p>
+                </div>
+                <div class="faq-item">
+                    <h4>How do I receive price alerts?</h4>
+                    <p>You can receive alerts via email, browser push notifications, Telegram bot, or WhatsApp. Choose your preferred notification method in settings.</p>
+                </div>
+                <div class="faq-item">
+                    <h4>How accurate are price predictions?</h4>
+                    <p>Our AI analyzes historical price patterns, sales events, and market trends. While predictions are highly accurate, actual prices depend on seller decisions.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <h2>Ready to Start Saving?</h2>
+            <p>Join 50,000+ smart shoppers who never miss a price drop.</p>
+            <a href="/signup" class="btn-hero primary large">
+                <i class="fa fa-rocket"></i>
+                Create Free Account
+            </a>
+        </section>
+
+        <!-- Footer -->
+        <footer class="landing-footer">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <i class="fa fa-bell"></i>
+                        <span>Price Alerter AI</span>
+                    </div>
+                    <p>Smart price tracking for smart shoppers. Never overpay again.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Product</h4>
+                        <a href="/">Features</a>
+                        <a href="/signup">Start Free</a>
+                        <a href="/blog">Blog</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Company</h4>
+                        <a href="/about">About Us</a>
+                        <a href="/contact">Contact</a>
+                        <a href="/blog">Guides</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Legal</h4>
+                        <a href="/privacy">Privacy Policy</a>
+                        <a href="/terms">Terms of Service</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Price Alerter AI. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <div class="chatbot-widget" id="chatbotWidget">
+        <button class="chatbot-toggle" id="chatbotToggle" aria-label="Open AI assistant">
+            <i class="fa fa-comment-dots"></i>
+            <span>AI Help</span>
+        </button>
+        <div class="chatbot-panel" id="chatbotPanel">
+            <div class="chatbot-header">
+                <div>
+                    <strong>Price Alerter Assistant</strong>
+                    <p>Ask for quick navigation help</p>
+                </div>
+                <button class="chatbot-close" id="chatbotClose" aria-label="Close chat">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="chatbot-messages" id="chatbotMessages">
+                <div class="chat-msg bot">Hi! I can help you navigate quickly. Try: <em>track price</em>, <em>blog</em>, <em>login</em>, <em>signup</em>, <em>supported stores</em>.</div>
+            </div>
+            <div class="chatbot-quick-actions">
+                <button data-query="track price">Track Price</button>
+                <button data-query="supported stores">Supported Stores</button>
+                <button data-query="pricing">Pricing</button>
+                <button data-query="contact">Contact</button>
+            </div>
+            <form class="chatbot-input-row" id="chatbotForm">
+                <input type="text" id="chatbotInput" placeholder="Type your question..." autocomplete="off">
+                <button type="submit" aria-label="Send message"><i class="fa fa-paper-plane"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        /* Landing Page Styles - Edge to Edge */
+        .landing-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .landing-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 5%;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        
+        .logo i {
+            color: var(--accent-orange);
+            font-size: 28px;
+        }
+        
+        /* Mobile Menu Button */
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 5px;
+        }
+        
+        .landing-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        
+        .landing-nav a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .landing-nav a:hover {
+            color: var(--accent-orange);
+        }
+        
+        .btn-nav {
+            color: var(--text-main) !important;
+        }
+        
+        .btn-primary {
+            background: var(--gradient-orange);
+            color: white !important;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600 !important;
+        }
+        
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 80px 5%;
+            width: 100%;
+        }
+        
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-orange), #ff7b00);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero-subtitle {
+            font-size: clamp(1rem, 2vw, 1.3rem);
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 60px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-hero {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .btn-hero.primary {
+            background: var(--gradient-orange);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 159, 10, 0.3);
+        }
+        
+        .btn-hero.primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 159, 10, 0.4);
+        }
+        
+        .btn-hero.secondary {
+            background: white;
+            color: var(--text-main);
+            border: 2px solid var(--border-color);
+        }
+        
+        .btn-hero.secondary:hover {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+        
+        .btn-hero.large {
+            padding: 20px 48px;
+            font-size: 1.3rem;
+        }
+        
+        .trusted-by {
+            color: var(--text-secondary);
+        }
+        
+        .trusted-by p {
+            margin-bottom: 16px;
+        }
+        
+        .store-logos {
+            display: flex;
+            justify-content: center;
+            gap: clamp(10px, 3vw, 24px);
+            flex-wrap: wrap;
+            padding: 0 20px;
+        }
+        
+        .store-logos span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 10px 16px;
+            border-radius: 14px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            font-size: clamp(0.8rem, 1.5vw, 0.9rem);
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+        
+        .store-logos .brand-logo {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            border-radius: 6px;
+        }
+        
+        /* Supported Stores Grid in Features */
+        .supported-stores-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+        
+        .store-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0,0,0,0.06);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #333;
+            border: 1px solid rgba(0,0,0,0.08);
+        }
+        
+        .store-tag img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            border-radius: 5px;
+        }
+
+        .ai-features {
+            padding: 80px 5%;
+            width: 100%;
+        }
+
+        .ai-features h2 {
+            text-align: center;
+            font-size: clamp(1.8rem, 4vw, 2.4rem);
+            margin-bottom: 38px;
+        }
+
+        .ai-features-grid {
+            max-width: 1300px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+        }
+
+        .ai-feature-card {
+            background: linear-gradient(145deg, #ffffff, #f4f7fb);
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .ai-feature-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .ai-feature-head i {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+        }
+
+        .ai-feature-card p {
+            color: #526071;
+            line-height: 1.5;
+        }
+        
+        /* FAQ Stores */
+        .faq-stores {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .faq-store {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f5f5f5;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #333;
+        }
+        
+        .faq-store img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .chatbot-widget {
+            position: fixed;
+            right: 18px;
+            bottom: 20px;
+            z-index: 1200;
+        }
+
+        .chatbot-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            border-radius: 999px;
+            padding: 12px 18px;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 12px 26px rgba(2, 6, 23, 0.35);
+            font-weight: 600;
+        }
+
+        .chatbot-panel {
+            width: min(360px, calc(100vw - 24px));
+            background: #ffffff;
+            border: 1px solid rgba(15, 23, 42, 0.12);
+            border-radius: 16px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .chatbot-panel.open {
+            display: block;
+        }
+
+        .chatbot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            background: linear-gradient(135deg, #f8fafc, #eef2ff);
+            border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+        }
+
+        .chatbot-header p {
+            margin-top: 4px;
+            font-size: 0.8rem;
+            color: #5b6472;
+        }
+
+        .chatbot-close {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #475569;
+        }
+
+        .chatbot-messages {
+            height: 220px;
+            overflow-y: auto;
+            padding: 12px;
+            background: #f8fafc;
+        }
+
+        .chat-msg {
+            max-width: 90%;
+            padding: 10px 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            line-height: 1.45;
+        }
+
+        .chat-msg.bot {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .chat-msg.user {
+            margin-left: auto;
+            background: #0ea5e9;
+            color: #fff;
+        }
+
+        .chatbot-quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 12px 0;
+            background: #fff;
+        }
+
+        .chatbot-quick-actions button {
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            background: #ecfeff;
+            color: #0369a1;
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        .chatbot-input-row {
+            display: flex;
+            gap: 8px;
+            padding: 10px 12px 12px;
+            border-top: 1px solid rgba(15, 23, 42, 0.08);
+            background: #fff;
+        }
+
+        .chatbot-input-row input {
+            flex: 1;
+            border: 1px solid rgba(15, 23, 42, 0.16);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .chatbot-input-row button {
+            border: none;
+            border-radius: 10px;
+            width: 42px;
+            background: #0ea5e9;
+            color: #fff;
+            cursor: pointer;
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 80px 5%;
+            width: 100%;
+        }
+        
+        .features h2 {
+            text-align: center;
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 48px;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-orange);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        /* How It Works */
+        .how-it-works {
+            padding: 80px 5%;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .how-it-works h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 48px;
+        }
+        
+        .steps {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: clamp(16px, 4vw, 60px);
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .step {
+            flex: 1;
+            min-width: 200px;
+            max-width: 300px;
+            text-align: center;
+        }
+        
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient-orange);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            margin: 0 auto 20px;
+        }
+        
+        .step-content h4 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .step-content p {
+            color: var(--text-secondary);
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+        
+        .step-connector {
+            width: 60px;
+            height: 2px;
+            background: var(--accent-orange);
+            margin-top: 30px;
+            display: block;
+        }
+        
+        /* Stats Section */
+        .stats-section {
+            display: flex;
+            justify-content: center;
+            gap: clamp(24px, 8vw, 80px);
+            padding: 60px 5%;
+            background: linear-gradient(135deg, var(--accent-orange), #ff7b00);
+            border-radius: 20px;
+            margin: 40px 5%;
+            width: 90%;
+        }
+        
+        .stat-item {
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-number {
+            display: block;
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: clamp(0.8rem, 1.5vw, 1rem);
+            opacity: 0.9;
+        }
+        
+        /* Testimonials */
+        .testimonials {
+            padding: 80px 5%;
+            width: 100%;
+        }
+        
+        .testimonials h2 {
+            text-align: center;
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 48px;
+        }
+        
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .testimonial-card {
+            background: white;
+            padding: 28px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+        
+        .testimonial-stars {
+            color: #ffc107;
+            margin-bottom: 16px;
+        }
+        
+        .testimonial-card > p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            font-style: italic;
+        }
+        
+        .testimonial-author strong {
+            display: block;
+            color: var(--text-main);
+        }
+        
+        .testimonial-author span {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        /* FAQ Section */
+        .faq-section {
+            padding: 80px 5%;
+            width: 100%;
+        }
+        
+        .faq-section h2 {
+            text-align: center;
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 48px;
+        }
+        
+        .faq-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .faq-item {
+            background: white;
+            padding: 28px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+        
+        .faq-item h4 {
+            font-size: 1.1rem;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+        
+        .faq-item p {
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+            padding: 80px 5%;
+            width: 100%;
+        }
+        
+        .cta-section h2 {
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
+            margin-bottom: 16px;
+        }
+        
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            font-size: 1.2rem;
+        }
+        
+        /* Footer */
+        .landing-footer {
+            border-top: 1px solid var(--border-color);
+            padding: 60px 5% 30px;
+            margin-top: 40px;
+            width: 100%;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            gap: 48px;
+            flex-wrap: wrap;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .footer-brand {
+            max-width: 300px;
+        }
+        
+        .footer-brand .logo {
+            margin-bottom: 16px;
+        }
+        
+        .footer-brand p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: clamp(30px, 8vw, 80px);
+        }
+        
+        .footer-column h4 {
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+        
+        .footer-column a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 10px;
+            transition: color 0.3s;
+        }
+        
+        .footer-column a:hover {
+            color: var(--accent-orange);
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 30px;
+            margin-top: 30px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: block;
+            }
+            
+            .landing-nav {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                flex-direction: column;
+                padding: 20px;
+                gap: 16px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            }
+            
+            .landing-nav.active {
+                display: flex;
+            }
+            
+            .hero {
+                padding: 40px 4%;
+            }
+            
+            .hero h1 {
+                font-size: 2rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+                padding: 0 20px;
+            }
+            
+            .btn-hero {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+            
+            .features, .how-it-works, .testimonials, .faq-section, .cta-section {
+                padding: 50px 4%;
+            }
+
+            .ai-features {
+                padding: 50px 4%;
+            }
+            
+            .stats-section {
+                flex-wrap: wrap;
+                gap: 30px;
+                padding: 40px 4%;
+                margin: 40px 4%;
+                width: 92%;
+            }
+            
+            .step {
+                min-width: 100%;
+                max-width: 100%;
+            }
+            
+            .step-connector {
+                display: none;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .footer-links {
+                justify-content: center;
+            }
+            
+            .footer-brand {
+                max-width: 100%;
+            }
+        }
+        
+        /* Small mobile */
+        @media (max-width: 480px) {
+            .landing-header {
+                padding: 15px 4%;
+            }
+            
+            .logo {
+                font-size: 20px;
+            }
+            
+            .logo i {
+                font-size: 24px;
+            }
+            
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1rem;
+            }
+            
+            .feature-card, .testimonial-card, .faq-item {
+                padding: 20px;
+            }
+
+            .chatbot-toggle span {
+                display: none;
+            }
+        }
+    </style>
+    
+    <script>
+        function toggleMenu() {
+            var nav = document.getElementById('mainNav');
+            nav.classList.toggle('active');
+        }
+
+        (function initChatbot() {
+            var panel = document.getElementById('chatbotPanel');
+            var toggle = document.getElementById('chatbotToggle');
+            var closeBtn = document.getElementById('chatbotClose');
+            var form = document.getElementById('chatbotForm');
+            var input = document.getElementById('chatbotInput');
+            var messages = document.getElementById('chatbotMessages');
+            var quickButtons = document.querySelectorAll('.chatbot-quick-actions button');
+
+            function addMsg(text, type) {
+                var div = document.createElement('div');
+                div.className = 'chat-msg ' + type;
+                div.innerHTML = text;
+                messages.appendChild(div);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            function botReply(query) {
+                var q = (query || '').toLowerCase();
+                if (q.includes('track') || q.includes('price')) {
+                    return 'Start here: <a href="/signup">Create account</a>, then paste a product link in your dashboard.';
+                }
+                if (q.includes('login') || q.includes('sign in')) {
+                    return 'Use this page: <a href="/login">Login</a>. If needed, tap <a href="/forgot-password">Forgot Password</a>.';
+                }
+                if (q.includes('signup') || q.includes('register')) {
+                    return 'Open <a href="/signup">Signup</a> and create your free tracker account.';
+                }
+                if (q.includes('blog') || q.includes('guide')) {
+                    return 'Read shopping guides on the <a href="/blog">Blog</a>.';
+                }
+                if (q.includes('contact') || q.includes('support')) {
+                    return 'Reach support on the <a href="/contact">Contact page</a>.';
+                }
+                if (q.includes('store') || q.includes('amazon') || q.includes('flipkart')) {
+                    return 'We support Amazon, Flipkart, Myntra, Ajio, Meesho, Snapdeal, Tata CLiQ, and Reliance Digital.';
+                }
+                if (q.includes('pricing')) {
+                    return 'Current core tracking is free. For plan details, start from <a href="/signup">Signup</a>.';
+                }
+                return 'I can help with navigation: try <em>track price</em>, <em>login</em>, <em>signup</em>, <em>blog</em>, or <em>contact</em>.';
+            }
+
+            toggle.addEventListener('click', function() {
+                panel.classList.toggle('open');
+            });
+
+            closeBtn.addEventListener('click', function() {
+                panel.classList.remove('open');
+            });
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var text = input.value.trim();
+                if (!text) return;
+                addMsg(text, 'user');
+                input.value = '';
+                window.setTimeout(function() {
+                    addMsg(botReply(text), 'bot');
+                }, 220);
+            });
+
+            quickButtons.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var q = btn.getAttribute('data-query') || '';
+                    addMsg(q, 'user');
+                    window.setTimeout(function() {
+                        addMsg(botReply(q), 'bot');
+                    }, 180);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

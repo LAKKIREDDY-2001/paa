@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Reliance Digital logo">
+  <rect width="64" height="64" rx="14" fill="#0B4EA2"/>
+  <path d="M22 22c6-8 20-8 24 0-8-2-16 0-20 6 6-2 12 0 16 4-6-1-12 2-15 7 0 0-5-7-5-17z" fill="#FBB03B"/>
+  <circle cx="39" cy="22" r="2" fill="#FBB03B"/>
+</svg>

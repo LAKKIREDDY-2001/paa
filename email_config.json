@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "smtp_server": "smtp.gmail.com",
+  "smtp_port": 587,
+  "smtp_email": "madhavalr4321@gmail.com",
+  "smtp_password": "Srinivasulu@1967",
+  "from_name": "AI Price Alert",
+  "provider": "gmail",
+  "use_tls": true,
+  "host_url": "http://localhost:8081"
+}
