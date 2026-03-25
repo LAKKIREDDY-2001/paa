@@ -7,6 +7,12 @@ let isTrackerActionInProgress = false;
 let appInitialized = false;
 let dashboardUser = { username: 'User' };
 let recentActivity = [];
+let notificationItems = [];
+let recentlyViewedItems = [];
+let currentTrendPeriod = 30;
+let dashboardServiceWorker = null;
+let priceChartInstance = null;
+let expandedTrackerIds = new Set();
 
 // Safe API_BASE_URL - fallback to empty string if window.location is not available
 const getApiBaseUrl = () => {
@@ -63,6 +69,14 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 15000) {
     }
 }
 
+function getApiErrorMessage(data, fallback) {
+    if (!data) return fallback;
+    if (data.error && data.suggestedUrl) {
+        return `${data.error} Suggested URL: ${data.suggestedUrl}`;
+    }
+    return data.error || fallback;
+}
+
 // Celebration Configuration
 const celebrationColors = [
     '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', 
@@ -86,12 +100,17 @@ function initDashboardApp() {
     loadTrackers();
     setupNavigation();
     loadUserData();
+    loadNotificationPreferences();
+    loadNotifications();
+    loadRecentlyViewed();
+    loadWhatsAppStatus();
     initTilt();
     initCelebration();
     startAutoRefresh();
     addManualRefreshButton();
     initAiAssistant();
     initCommandPalette();
+    registerServiceWorker();
     refreshAIInsights();
 }
 
@@ -204,22 +223,63 @@ function initCelebration() {
     }
 }
 
-function showCelebration(tracker) {
+function showCelebration(tracker, options = {}) {
     const modal = document.getElementById('celebration-modal');
     const productNameEl = document.getElementById('celeb-product-name');
     const savingsEl = document.getElementById('celeb-savings');
+    const titleEl = document.querySelector('.celebration-title');
+    const priceDropEl = document.querySelector('.price-drop');
+    const savingsLabelEl = document.querySelector('.savings-label');
+    const primaryBtn = document.querySelector('.celebration-btn.primary');
+    const secondaryBtn = document.querySelector('.celebration-btn.secondary');
+    const ribbonEl = document.querySelector('.trophy-ribbon span');
+    const trophyIconEl = document.querySelector('.trophy-icon');
+    const mode = options.mode || 'reached';
     
     // Store the tracker globally so buyNowFromCelebration can access it
     celebrationTracker = tracker;
     
     if (modal && tracker) {
+        modal.classList.remove('mode-created', 'mode-reached');
+        modal.classList.add(mode === 'created' ? 'mode-created' : 'mode-reached');
         productNameEl.textContent = tracker.productName || 'Product';
-        
-        const saved = tracker.currentPrice - tracker.targetPrice;
-        savingsEl.textContent = `You save ${tracker.currencySymbol || '$'}${Math.abs(saved).toFixed(2)}`;
+
+        if (mode === 'created') {
+            if (titleEl) {
+                titleEl.innerHTML = '<span class="title-word">✨</span><span class="title-word">ALERT</span><span class="title-word highlight">CREATED!</span><span class="title-word">✨</span>';
+            }
+            if (priceDropEl) priceDropEl.textContent = 'TRACKING STARTED';
+            if (savingsLabelEl) savingsLabelEl.textContent = 'Target Price';
+            if (savingsEl) savingsEl.textContent = `${tracker.currencySymbol || '$'}${Number(tracker.targetPrice || 0).toFixed(2)}`;
+            if (primaryBtn) {
+                primaryBtn.innerHTML = '<i class="fa fa-chart-line"></i> View Trends';
+                primaryBtn.onclick = () => {
+                    closeCelebration();
+                    viewTrends(tracker.id);
+                };
+            }
+            if (secondaryBtn) secondaryBtn.innerHTML = '<i class="fa fa-check"></i> Nice!';
+            if (ribbonEl) ribbonEl.textContent = 'TRACKING ON';
+            if (trophyIconEl) trophyIconEl.textContent = '🎯';
+        } else {
+            if (titleEl) {
+                titleEl.innerHTML = '<span class="title-word">🎉</span><span class="title-word">TARGET</span><span class="title-word highlight">REACHED!</span><span class="title-word">🎉</span>';
+            }
+            if (priceDropEl) priceDropEl.textContent = '⬇️ PRICE DROP!';
+            if (savingsLabelEl) savingsLabelEl.textContent = 'You Save';
+            const saved = Number(tracker.currentPrice || 0) - Number(tracker.targetPrice || 0);
+            if (savingsEl) savingsEl.textContent = `${tracker.currencySymbol || '$'}${Math.abs(saved).toFixed(2)}`;
+            if (primaryBtn) {
+                primaryBtn.innerHTML = '<i class="fa fa-shopping-cart"></i> Buy Now';
+                primaryBtn.onclick = () => buyNowFromCelebration();
+            }
+            if (secondaryBtn) secondaryBtn.innerHTML = '<i class="fa fa-check"></i> Awesome!';
+            if (ribbonEl) ribbonEl.textContent = 'YOU DID IT!';
+            if (trophyIconEl) trophyIconEl.textContent = '🏆';
+        }
         
         modal.classList.add('active');
-        createConfetti();
+        createConfetti(mode === 'created' ? 110 : 170);
         
         // Play sound effect (optional - browsers may block this)
         try {
@@ -229,9 +289,15 @@ function showCelebration(tracker) {
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
-            oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
-            oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+            if (mode === 'created') {
+                oscillator.frequency.setValueAtTime(493.88, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.08);
+                oscillator.frequency.setValueAtTime(739.99, audioContext.currentTime + 0.16);
+            } else {
+                oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2);
+            }
             gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
             oscillator.start(audioContext.currentTime);
@@ -254,13 +320,13 @@ function closeCelebration() {
     }
 }
 
-function createConfetti() {
+function createConfetti(amount = 150) {
     const container = document.getElementById('confetti-container');
     if (!container) return;
     
     container.innerHTML = '';
     
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < amount; i++) {
         const confetti = document.createElement('div');
         confetti.className = 'confetti';
         confetti.style.left = Math.random() * 100 + '%';
@@ -307,6 +373,24 @@ function buyNowFromCelebration() {
 
 function checkPriceReached(tracker) {
     return tracker && tracker.currentPrice <= tracker.targetPrice;
+}
+
+function formatCurrency(symbol, value) {
+    const amount = Number(value || 0);
+    return `${symbol || '$'}${amount.toFixed(2)}`;
+}
+
+function formatDateLabel(iso) {
+    try {
+        return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch (e) {
+        return '--';
+    }
+}
+
+function safeProductImage(url) {
+    const value = String(url || '').trim();
+    return /^https?:\/\//i.test(value) ? value : '';
 }
 
 // ==================== TILT EFFECT ====================
@@ -459,7 +543,7 @@ async function handleFlow() {
             if (response.ok) {
                 priceStep.style.display = 'block';
                 priceStep.innerHTML = '<p><strong>Current Price: ' + (data.currency_symbol || '$') + data.price + '</strong></p>' +
-                    '<input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Set target price" value="' + (data.price * 0.9).toFixed(2) + '">';
+                    '<input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Set target price" value="' + (data.price * 0.95).toFixed(2) + '">';
                 mainBtn.disabled = false;
                 mainBtn.innerHTML = 'Create Tracker';
                 
@@ -467,10 +551,14 @@ async function handleFlow() {
                 priceStep.dataset.currentPrice = data.price;
                 priceStep.dataset.currency = data.currency;
                 priceStep.dataset.currencySymbol = data.currency_symbol;
+                priceStep.dataset.productImage = data.productImage || '';
+                if (data.knownStore === false || data.site === 'generic') {
+                    showToast('success', 'Global mode enabled for this site. For best results, use a direct product page with a visible price.');
+                }
             } else {
                 mainBtn.disabled = false;
                 mainBtn.innerHTML = 'Start AI Tracking';
-                showToast('error', data.error || 'Failed to fetch price');
+                showToast('error', getApiErrorMessage(data, 'Failed to fetch price'));
             }
         } catch (error) {
             mainBtn.disabled = false;
@@ -494,8 +582,9 @@ async function handleFlow() {
         const productName = priceStep.dataset.productName || 'Product';
         const currency = priceStep.dataset.currency || 'USD';
         const currencySymbol = priceStep.dataset.currencySymbol || '$';
+        const productImage = priceStep.dataset.productImage || '';
         
-        await createTracker(url, targetPrice, currentPrice, productName, currency, currencySymbol);
+        await createTracker(url, targetPrice, currentPrice, productName, currency, currencySymbol, productImage);
     }
 }
 
@@ -512,7 +601,7 @@ function setLoadingState(loading, message) {
     }
 }
 
-async function createTracker(url, targetPrice, currentPrice, productName, currency, currencySymbol) {
+async function createTracker(url, targetPrice, currentPrice, productName, currency, currencySymbol, productImage) {
     const urlInput = document.getElementById('urlInput');
     const mainBtn = document.getElementById('mainBtn');
     const priceStep = document.getElementById('priceStep');
@@ -534,7 +623,11 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
                 targetPrice: parseFloat(targetPrice),
                 currency: currency,
                 currencySymbol: currencySymbol,
-                productName: productName
+                productName: productName,
+                productImage: productImage,
+                alertRules: [
+                    { type: 'target_price', value: parseFloat(targetPrice) }
+                ]
             })
         });
         
@@ -546,17 +639,26 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
             id: data.id,
             url: url,
             productName: productName,
+            productImage: productImage,
             currentPrice: currentPrice,
             targetPrice: parseFloat(targetPrice),
             currency: currency,
             currencySymbol: currencySymbol,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            alertRules: [{ type: 'target_price', value: parseFloat(targetPrice) }]
         };
         
         trackers.push(newTracker);
         logActivity('Tracker created', productName + ' target set at ' + currencySymbol + targetPrice);
         
         showToast('success', 'Tracker created successfully!');
+        setTimeout(() => {
+            showCelebration(newTracker, { mode: 'created' });
+        }, 180);
+        triggerBrowserNotification(newTracker, {
+            title: 'Tracker created',
+            body: (productName || 'Tracked product') + ' is now being monitored at target ' + formatCurrency(currencySymbol, parseFloat(targetPrice))
+        });
         
         urlInput.value = '';
         priceStep.style.display = 'none';
@@ -618,6 +720,15 @@ function openTrackerUrlFromElement(element) {
     openSafeUrl(url, true);
 }
 
+function toggleTrackerDetails(trackerId) {
+    if (expandedTrackerIds.has(trackerId)) {
+        expandedTrackerIds.delete(trackerId);
+    } else {
+        expandedTrackerIds.add(trackerId);
+    }
+    renderTrackers();
+}
+
 function attachTrackerCardClickHandlers() {
     const cards = document.querySelectorAll('.tracker-card');
     cards.forEach((card) => {
@@ -672,17 +783,88 @@ function renderTrackers() {
         if (urlLower.includes('ebay')) return '<i class="fa fa-shopping-bag"></i>';
         return '<i class="fa fa-shopping-bag"></i>';
     }
+
+    function getStoreTone(url) {
+        const value = String(url || '').toLowerCase();
+        if (value.includes('amazon')) return 'amazon';
+        if (value.includes('flipkart')) return 'flipkart';
+        if (value.includes('myntra')) return 'myntra';
+        if (value.includes('ajio')) return 'ajio';
+        if (value.includes('meesho')) return 'meesho';
+        if (value.includes('snapdeal')) return 'snapdeal';
+        if (value.includes('tatacliq') || value.includes('tata')) return 'tatacliq';
+        if (value.includes('reliance')) return 'reliance';
+        return 'generic';
+    }
+
+    function getStoreLabel(url) {
+        const tone = getStoreTone(url);
+        const labels = {
+            amazon: 'Amazon',
+            flipkart: 'Flipkart',
+            myntra: 'Myntra',
+            ajio: 'Ajio',
+            meesho: 'Meesho',
+            snapdeal: 'Snapdeal',
+            tatacliq: 'Tata CLiQ',
+            reliance: 'Reliance Digital',
+            generic: 'Online Store'
+        };
+        return labels[tone] || 'Online Store';
+    }
     
-    container.innerHTML = filteredTrackers.map(tracker => {
+    container.innerHTML = filteredTrackers.map((tracker, index) => {
         const status = tracker.currentPrice <= tracker.targetPrice ? 'reached' : 'active';
         const statusClass = status === 'reached' ? 'status-reached' : 'status-active';
         const statusText = status === 'reached' ? 'Target Reached!' : 'Active';
+        const storeTone = getStoreTone(tracker.url);
         const trackerUrl = tracker.url || '';
         const safeUrlAttr = escapeAttr(trackerUrl);
         const safeName = escapeHtml(tracker.productName || 'Product');
         const safeUrlText = escapeHtml(trackerUrl);
-        
-        return '<div class="tracker-card tilt-3d" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link"><div class="tracker-header"><div class="tracker-info"><div class="tracker-logo">' + getCompanyLogo(tracker.url) + '</div><h4 class="tracker-name">' + safeName + '</h4></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div><button type="button" class="tracker-url tracker-url-link" onclick="event.stopPropagation(); openTrackerUrlFromElement(this)">' + safeUrlText + '</button><div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.currentPrice + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + (tracker.currencySymbol || '$') + tracker.targetPrice + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div><div class="tracker-actions"><button class="tracker-action" onclick="viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button class="tracker-action" onclick="refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button class="tracker-action delete" onclick="deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
+        const imageUrl = safeProductImage(tracker.productImage);
+        const imageMarkup = imageUrl
+            ? '<div class="tracker-media"><img src="' + escapeAttr(imageUrl) + '" alt="' + safeName + '" loading="lazy"></div>'
+            : '<div class="tracker-media">' + getCompanyLogo(tracker.url) + '</div>';
+        const insight = tracker.bestTimeToBuy && typeof tracker.bestTimeToBuy === 'object' ? tracker.bestTimeToBuy : null;
+        const insightLabel = escapeHtml((tracker.bestTimeToBuy && tracker.bestTimeToBuy.label) || 'Watching');
+        const insightSummary = escapeHtml((insight && insight.summary) || 'We are actively tracking this product for your next price move.');
+        const lastChecked = tracker.lastCheckedAt ? formatRelativeTime(tracker.lastCheckedAt) : 'Not checked yet';
+        const lastCheckedFull = tracker.lastCheckedAt ? new Date(tracker.lastCheckedAt).toLocaleString() : 'Pending first check';
+        const createdOn = tracker.createdAt ? new Date(tracker.createdAt).toLocaleString() : 'Recently added';
+        const storeLabel = getStoreLabel(tracker.url);
+        const alertRules = Array.isArray(tracker.alertRules) ? tracker.alertRules : [];
+        const alertSummary = alertRules.length
+            ? alertRules.map((rule) => {
+                if (rule.type === 'target_price') {
+                    return 'Target ' + formatCurrency(tracker.currencySymbol, rule.value);
+                }
+                if (rule.type === 'percentage_drop') {
+                    return Math.round(Number(rule.value) || 0) + '% drop';
+                }
+                return escapeHtml(String(rule.type || 'Rule'));
+            }).join(' • ')
+            : 'Default target alert';
+        const trackerError = tracker.lastCheckError ? '<div class="tracker-error"><i class="fa fa-triangle-exclamation"></i> ' + escapeHtml(tracker.lastCheckError) + '</div>' : '';
+        const animationDelay = Math.min(index * 70, 560);
+        const isExpanded = expandedTrackerIds.has(tracker.id);
+        const detailsSection = '<div class="tracker-details ' + (isExpanded ? 'expanded' : '') + '">' +
+            '<div class="tracker-details-grid">' +
+                '<div class="tracker-detail-item"><span class="tracker-detail-label">Store</span><strong>' + escapeHtml(storeLabel) + '</strong></div>' +
+                '<div class="tracker-detail-item"><span class="tracker-detail-label">Created</span><strong>' + escapeHtml(createdOn) + '</strong></div>' +
+                '<div class="tracker-detail-item"><span class="tracker-detail-label">Last checked</span><strong>' + escapeHtml(lastCheckedFull) + '</strong></div>' +
+                '<div class="tracker-detail-item"><span class="tracker-detail-label">Alert rules</span><strong>' + alertSummary + '</strong></div>' +
+            '</div>' +
+            '<div class="tracker-detail-note"><i class="fa fa-sparkles"></i> ' + insightSummary + '</div>' +
+        '</div>';
+
+        return '<div class="tracker-card tilt-3d tracker-card-' + status + ' tracker-store-' + storeTone + '" style="animation-delay:' + animationDelay + 'ms" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link">' +
+            '<div class="tracker-header"><div class="tracker-info">' + imageMarkup + '<div class="tracker-title-block"><h4 class="tracker-name">' + safeName + '</h4><div class="tracker-meta-row"><span class="meta-pill"><i class="fa fa-lightbulb"></i> ' + insightLabel + '</span><span class="meta-pill"><i class="fa fa-clock"></i> ' + escapeHtml(lastChecked) + '</span></div></div></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div>' +
+            '<button type="button" class="tracker-url tracker-url-link" onclick="event.stopPropagation(); openTrackerUrlFromElement(this)">' + safeUrlText + '</button>' +
+            '<div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + formatCurrency(tracker.currencySymbol, tracker.currentPrice) + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + formatCurrency(tracker.currencySymbol, tracker.targetPrice) + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div>' +
+            trackerError +
+            detailsSection +
+            '<div class="tracker-actions"><button type="button" class="tracker-action" onclick="event.stopPropagation(); toggleTrackerDetails(' + tracker.id + ')"><i class="fa fa-chevron-' + (isExpanded ? 'up' : 'down') + '"></i> ' + (isExpanded ? 'Less' : 'Details') + '</button><button type="button" class="tracker-action" onclick="event.stopPropagation(); viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button type="button" class="tracker-action" onclick="event.stopPropagation(); refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button type="button" class="tracker-action delete" onclick="event.stopPropagation(); deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
     }).join('');
     
     attachTrackerCardClickHandlers();
@@ -773,7 +955,7 @@ async function refreshPrice(trackerId) {
     }
     
     try {
-        const response = await fetch(API_BASE_URL + '/get-price', {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/get-price', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: tracker.url })
@@ -784,27 +966,34 @@ async function refreshPrice(trackerId) {
             refreshBtn.innerHTML = '<i class="fa fa-refresh"></i> Refresh';
         }
         
-        const data = await response.json();
-        
         if (response.ok) {
             const oldPrice = tracker.currentPrice;
             tracker.currentPrice = data.price;
             tracker.productName = data.productName || tracker.productName;
+            tracker.currency = data.currency || tracker.currency;
+            tracker.currencySymbol = data.currency_symbol || tracker.currencySymbol;
+            tracker.productImage = data.productImage || tracker.productImage;
             
             // Check if target just reached
             if (checkPriceReached(tracker) && oldPrice > tracker.targetPrice) {
                 celebrationTracker = tracker;
                 setTimeout(() => {
-                    showCelebration(tracker);
+                    showCelebration(tracker, { mode: 'reached' });
                 }, 500);
+                triggerBrowserNotification(tracker);
             }
             await syncTrackerUpdate(tracker);
             logActivity('Price refreshed', (tracker.productName || 'Product') + ' now at ' + (data.currency_symbol || '$') + data.price);
             showToast('success', 'Price updated: ' + (data.currency_symbol || '$') + data.price);
             renderTrackers();
             updateStats();
+            if (currentTracker && currentTracker.id === tracker.id) {
+                currentTracker = tracker;
+                generateChart(tracker);
+            }
+            loadNotifications();
         } else {
-            showToast('error', data.error || 'Failed to refresh price');
+            showToast('error', getApiErrorMessage(data, 'Failed to refresh price'));
         }
     } catch (error) {
         if (refreshBtn) {
@@ -845,52 +1034,192 @@ function toggleSelect(trackerId) {
 
 // ==================== PRICE TRENDS ====================
 
-function viewTrends(trackerId) {
+async function viewTrends(trackerId) {
     const tracker = trackers.find(t => t.id === trackerId);
     if (!tracker) return;
     currentTracker = tracker;
     switchView('price-trends');
-    
+
+    const trendImage = document.getElementById('trend-product-image');
+    const trendIcon = document.getElementById('trend-product-icon');
     document.querySelector('.product-details h3').textContent = tracker.productName || 'Product';
     document.querySelector('.product-details p').textContent = tracker.url;
-    document.getElementById('original-price').textContent = (tracker.currencySymbol || '$') + tracker.currentPrice;
-    document.getElementById('current-price').textContent = (tracker.currencySymbol || '$') + tracker.currentPrice;
-    
-    const savings = tracker.currentPrice - tracker.targetPrice;
-    document.getElementById('savings-amount').textContent = (tracker.currencySymbol || '$') + savings.toFixed(2);
-    
-    generateChart(tracker);
-    
-    const prediction = tracker.currentPrice <= tracker.targetPrice ? 'Price is at or below your target!' : 'Price may drop further';
-    document.getElementById('prediction-text').textContent = prediction;
-    document.getElementById('confidence').textContent = '85%';
+    document.getElementById('current-price').textContent = formatCurrency(tracker.currencySymbol, tracker.currentPrice);
+    const imageUrl = safeProductImage(tracker.productImage);
+    if (trendImage && trendIcon) {
+        if (imageUrl) {
+            trendImage.src = imageUrl;
+            trendImage.style.display = 'block';
+            trendIcon.style.display = 'none';
+        } else {
+            trendImage.style.display = 'none';
+            trendIcon.style.display = 'block';
+        }
+    }
+    await generateChart(tracker);
 }
 
-function generateChart(tracker) {
+async function generateChart(tracker) {
     const chartContainer = document.querySelector('.chart-main');
-    const days = 7;
-    const data = [];
-    let basePrice = tracker.currentPrice;
-    
-    for (let i = 0; i < days; i++) {
-        const variation = (Math.random() - 0.5) * basePrice * 0.1;
-        data.push(basePrice + variation);
+    if (!chartContainer) return;
+    chartContainer.innerHTML = '<div class="chart-shell"><div class="skeleton-line" style="height:220px;"></div><div class="skeleton-line"></div></div>';
+    let history = [];
+    let insight = { label: 'Watch closely', confidence: 65, summary: 'Tracking is active.' };
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/trackers/' + tracker.id + '/history?days=' + currentTrendPeriod, { method: 'GET' });
+        if (response.ok) {
+            history = Array.isArray(data.history) ? data.history : [];
+            insight = data.insight || insight;
+        }
+    } catch (error) {
+        history = [];
     }
-    data[days - 1] = tracker.currentPrice;
-    
-    const maxPrice = Math.max(...data);
-    chartContainer.innerHTML = '<div class="chart-placeholder"><div class="chart-line">' + 
-        data.map(price => '<div class="chart-bar" style="height: ' + ((price / maxPrice) * 150) + 'px;" title="' + price.toFixed(2) + '"></div>').join('') + 
-        '</div><div class="chart-labels">' + 
-        Array.from({length: days}, (_, i) => { 
-            const date = new Date(); 
-            date.setDate(date.getDate() - (days - 1 - i)); 
-            return '<span>' + date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'}) + '</span>'; 
-        }).join('') + '</div>';
-    
-    document.getElementById('trend-lowest').textContent = (tracker.currencySymbol || '$') + Math.min(...data).toFixed(2);
-    document.getElementById('trend-highest').textContent = (tracker.currencySymbol || '$') + Math.max(...data).toFixed(2);
+
+    let dataPoints = history
+        .map((point) => ({
+            price: Number(point.price),
+            recordedAt: point.recordedAt || tracker.createdAt || new Date().toISOString()
+        }))
+        .filter((point) => Number.isFinite(point.price));
+
+    if (!dataPoints.length) {
+        const fallbackTimestamp = tracker.createdAt || new Date().toISOString();
+        dataPoints = [
+            { price: Number(tracker.currentPrice || 0), recordedAt: fallbackTimestamp }
+        ];
+    }
+
+    if (dataPoints.length === 1) {
+        dataPoints = [
+            {
+                price: dataPoints[0].price,
+                recordedAt: tracker.createdAt || new Date(Date.now() - 86400000).toISOString()
+            },
+            {
+                price: dataPoints[0].price,
+                recordedAt: dataPoints[0].recordedAt || new Date().toISOString()
+            }
+        ];
+    }
+
+    const prices = dataPoints.map((point) => Number(point.price || 0));
+    const labels = dataPoints.map((point) => formatDateLabel(point.recordedAt));
+    const maxPrice = Math.max(...prices, 1);
+    const minPrice = Math.min(...prices, 0);
+
+    const renderSvgFallback = () => {
+        const width = 560;
+        const height = 180;
+        const points = prices.map((price, index) => {
+            const x = dataPoints.length === 1 ? width / 2 : (index / (dataPoints.length - 1)) * width;
+            const y = height - (((price - minPrice) / Math.max(maxPrice - minPrice || 1, 1)) * (height - 24)) - 12;
+            return `${x},${y}`;
+        }).join(' ');
+
+        chartContainer.innerHTML = '<div class="chart-shell"><svg class="chart-svg" viewBox="0 0 560 180" preserveAspectRatio="none"><polyline fill="none" stroke="#16a7c6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="' + points + '"></polyline>' +
+            prices.map((price, index) => {
+                const x = dataPoints.length === 1 ? width / 2 : (index / (dataPoints.length - 1)) * width;
+                const y = height - (((price - minPrice) / Math.max(maxPrice - minPrice || 1, 1)) * (height - 24)) - 12;
+                return '<circle cx="' + x + '" cy="' + y + '" r="4" fill="#ff9f0a"></circle>';
+            }).join('') +
+            '</svg><div class="chart-axis-labels">' + labels.map((label) => '<span>' + escapeHtml(label) + '</span>').join('') + '</div></div>';
+    };
+
+    if (window.Chart) {
+        try {
+            chartContainer.innerHTML = '<div class="chart-shell"><canvas id="price-history-canvas"></canvas></div>';
+            const canvas = document.getElementById('price-history-canvas');
+            if (!canvas) {
+                renderSvgFallback();
+            } else {
+                const ctx = canvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 240);
+                gradient.addColorStop(0, 'rgba(22, 167, 198, 0.30)');
+                gradient.addColorStop(0.65, 'rgba(22, 167, 198, 0.10)');
+                gradient.addColorStop(1, 'rgba(22, 167, 198, 0.02)');
+
+                if (priceChartInstance) {
+                    priceChartInstance.destroy();
+                }
+
+                priceChartInstance = new window.Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Price',
+                            data: prices,
+                            borderColor: '#16a7c6',
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 3,
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#ff9f0a',
+                            pointBorderColor: '#ffffff',
+                            pointBorderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label: (context) => formatCurrency(tracker.currencySymbol, context.raw)
+                                }
+                            },
+                            zoom: window.ChartZoom ? {
+                                pan: { enabled: true, mode: 'x' },
+                                zoom: {
+                                    wheel: { enabled: true },
+                                    pinch: { enabled: true },
+                                    mode: 'x'
+                                }
+                            } : undefined
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { color: '#667085' }
+                            },
+                            y: {
+                                grid: { color: 'rgba(15, 23, 42, 0.06)' },
+                                ticks: {
+                                    color: '#667085',
+                                    callback: (value) => formatCurrency(tracker.currencySymbol, value)
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Chart.js render failed, using SVG fallback', error);
+            renderSvgFallback();
+        }
+    } else {
+        renderSvgFallback();
+    }
+
+    document.getElementById('original-price').textContent = formatCurrency(tracker.currencySymbol, prices[0] || tracker.currentPrice);
+    document.getElementById('current-price').textContent = formatCurrency(tracker.currencySymbol, tracker.currentPrice);
+    const savings = Number((prices[0] || tracker.currentPrice) - tracker.currentPrice);
+    document.getElementById('savings-amount').textContent = formatCurrency(tracker.currencySymbol, Math.max(savings, 0));
+    document.getElementById('trend-lowest').textContent = formatCurrency(tracker.currencySymbol, Math.min(...prices));
+    document.getElementById('trend-highest').textContent = formatCurrency(tracker.currencySymbol, Math.max(...prices));
     document.getElementById('trend-since').textContent = new Date(tracker.createdAt).toLocaleDateString();
+    document.getElementById('prediction-text').textContent = insight.summary || 'Tracking is active.';
+    document.getElementById('confidence').textContent = (insight.confidence || 65) + '%';
     
     // Only show buy now button if tracker has valid URL
     const buyNowBtn = document.getElementById('buy-now-btn');
@@ -910,8 +1239,11 @@ function generateChart(tracker) {
 function setTimePeriod(period) {
     document.querySelectorAll('.time-btn').forEach(btn => {
         btn.classList.remove('active');
-        if (btn.textContent.toLowerCase().includes(period)) btn.classList.add('active');
+        const text = btn.textContent.toLowerCase();
+        const expected = period === '7d' ? '7' : period === '30d' ? '30' : '90';
+        if (text.includes(expected)) btn.classList.add('active');
     });
+    currentTrendPeriod = period === '7d' ? 7 : period === '30d' ? 30 : 90;
     if (currentTracker) generateChart(currentTracker);
 }
 
@@ -999,13 +1331,16 @@ function showToast(type, message) {
 function saveSettings() {
     localStorage.setItem('settings', JSON.stringify({
         pushNotifications: document.getElementById('push-notifications').checked,
+        desktopNotifications: document.getElementById('desktop-notifications')?.checked,
         emailAlerts: document.getElementById('email-alerts').checked,
+        phoneAlerts: document.getElementById('phone-alerts')?.checked,
         darkMode: document.getElementById('dark-mode').checked,
         compactView: document.getElementById('compact-view').checked,
         refreshInterval: document.getElementById('refresh-interval').value,
         autoDelete: document.getElementById('auto-delete').value,
         dropPercentage: document.getElementById('drop-percentage').value
     }));
+    saveNotificationPreferences();
     showToast('success', 'Settings saved');
 }
 
@@ -1022,14 +1357,247 @@ function toggleTheme() {
 function loadSettings() {
     const settings = JSON.parse(localStorage.getItem('settings') || '{}');
     if (settings.pushNotifications !== undefined) document.getElementById('push-notifications').checked = settings.pushNotifications;
+    if (document.getElementById('desktop-notifications')) {
+        if (settings.desktopNotifications !== undefined) {
+            document.getElementById('desktop-notifications').checked = settings.desktopNotifications;
+        } else {
+            document.getElementById('desktop-notifications').checked = ('Notification' in window) && Notification.permission === 'granted';
+        }
+    }
     if (settings.emailAlerts !== undefined) document.getElementById('email-alerts').checked = settings.emailAlerts;
+    if (settings.phoneAlerts !== undefined && document.getElementById('phone-alerts')) document.getElementById('phone-alerts').checked = settings.phoneAlerts;
     if (settings.darkMode !== undefined) document.getElementById('dark-mode').checked = settings.darkMode;
     if (settings.compactView !== undefined) document.getElementById('compact-view').checked = settings.compactView;
-    if (settings.refreshInterval !== undefined) document.getElementById('refresh-interval').value = settings.refreshInterval;
+    if (settings.refreshInterval !== undefined) {
+        document.getElementById('refresh-interval').value = settings.refreshInterval;
+    } else {
+        document.getElementById('refresh-interval').value = '900';
+    }
     if (settings.autoDelete !== undefined) document.getElementById('auto-delete').value = settings.autoDelete;
     if (settings.dropPercentage !== undefined) document.getElementById('drop-percentage').value = settings.dropPercentage;
     const currency = localStorage.getItem('currency');
     if (currency) document.getElementById('currency-select').value = currency;
+}
+
+async function loadNotificationPreferences() {
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/notification-preferences', { method: 'GET' });
+        if (!response.ok) return;
+        if (document.getElementById('push-notifications')) document.getElementById('push-notifications').checked = !!data.pushEnabled;
+        if (document.getElementById('email-alerts')) document.getElementById('email-alerts').checked = !!data.emailEnabled;
+        if (document.getElementById('phone-alerts')) document.getElementById('phone-alerts').checked = !!data.phoneEnabled;
+        const drop = document.getElementById('drop-percentage');
+        if (drop && data.alertDropPercentage) {
+            drop.value = String(Math.round(data.alertDropPercentage));
+        }
+    } catch (error) {
+        console.error('Failed to load notification preferences', error);
+    }
+}
+
+async function saveNotificationPreferences() {
+    try {
+        await fetchJsonWithTimeout(API_BASE_URL + '/api/notification-preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pushEnabled: document.getElementById('push-notifications')?.checked,
+                emailEnabled: document.getElementById('email-alerts')?.checked,
+                phoneEnabled: document.getElementById('phone-alerts')?.checked,
+                inAppEnabled: true,
+                alertDropPercentage: Number(document.getElementById('drop-percentage')?.value || 10)
+            })
+        });
+    } catch (error) {
+        console.error('Failed to save notification preferences', error);
+    }
+}
+
+async function loadNotifications() {
+    const feed = document.getElementById('notification-feed');
+    if (!feed) return;
+    feed.innerHTML = '<div class="activity-item"><div class="skeleton-line"></div></div>';
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/notifications', { method: 'GET' });
+        if (!response.ok) throw new Error('Failed to load notifications');
+        notificationItems = Array.isArray(data) ? data : [];
+    } catch (error) {
+        notificationItems = [];
+    }
+    renderNotifications();
+}
+
+async function loadWhatsAppStatus() {
+    const titleEl = document.getElementById('whatsapp-status-title');
+    const textEl = document.getElementById('whatsapp-status-text');
+    const actionBtn = document.getElementById('whatsapp-status-action');
+    if (!titleEl || !textEl || !actionBtn) return;
+
+    titleEl.textContent = 'Checking WhatsApp connection...';
+    textEl.textContent = 'We are loading your channel status.';
+    actionBtn.textContent = 'Refresh';
+    actionBtn.disabled = true;
+
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/connect-whatsapp', { method: 'GET' });
+        if (!response.ok) {
+            throw new Error('Failed to load WhatsApp status');
+        }
+
+        const isConnected = !!data.connected;
+        const phoneEnabled = !!data.phoneEnabled;
+        if (isConnected) {
+            titleEl.textContent = 'WhatsApp connected';
+            textEl.textContent = (data.phone || 'Phone saved') + (phoneEnabled ? ' is ready to receive price alerts.' : ' is saved, but phone alerts are currently off.');
+            actionBtn.textContent = 'Update';
+            actionBtn.disabled = false;
+            actionBtn.onclick = () => connectWhatsApp();
+        } else {
+            titleEl.textContent = 'WhatsApp not connected';
+            textEl.textContent = 'Connect your WhatsApp number to receive instant price alerts.';
+            actionBtn.textContent = 'Connect';
+            actionBtn.disabled = false;
+            actionBtn.onclick = () => connectWhatsApp();
+        }
+    } catch (error) {
+        titleEl.textContent = 'WhatsApp status unavailable';
+        textEl.textContent = 'We could not load your WhatsApp status right now.';
+        actionBtn.textContent = 'Retry';
+        actionBtn.disabled = false;
+        actionBtn.onclick = () => loadWhatsAppStatus();
+    }
+}
+
+function renderNotifications() {
+    const feed = document.getElementById('notification-feed');
+    if (!feed) return;
+    if (!notificationItems.length) {
+        feed.innerHTML = '<div class="activity-item">No notifications yet.</div>';
+        return;
+    }
+    const channelLabels = {
+        whatsapp: 'WhatsApp',
+        in_app: 'In-App',
+        system: 'System',
+        email: 'Email',
+        push: 'Push'
+    };
+    feed.innerHTML = notificationItems.slice(0, 8).map((item) => (
+        '<div class="notification-card ' + (!item.isRead ? 'unread' : '') + '" onclick="markNotificationRead(' + item.id + ')">' +
+            '<div><strong>' + escapeHtml(item.title) + '</strong><span>' + escapeHtml(item.message) + '</span><div class="notification-meta"><span class="channel-badge channel-' + escapeAttr(item.channel || 'system') + '">' + escapeHtml(channelLabels[item.channel] || 'Channel') + '</span></div></div>' +
+            '<div class="activity-time">' + formatRelativeTime(item.createdAt) + '</div>' +
+        '</div>'
+    )).join('');
+}
+
+async function markNotificationRead(notificationId) {
+    try {
+        await fetchJsonWithTimeout(API_BASE_URL + '/api/notifications/' + notificationId + '/read', { method: 'POST' });
+        notificationItems = notificationItems.map((item) => item.id === notificationId ? { ...item, isRead: true } : item);
+        renderNotifications();
+    } catch (error) {
+        console.error('Failed to mark notification read', error);
+    }
+}
+
+async function loadRecentlyViewed() {
+    const list = document.getElementById('recently-viewed-list');
+    if (!list) return;
+    list.innerHTML = '<div class="activity-item"><div class="skeleton-line"></div></div>';
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/recently-viewed', { method: 'GET' });
+        if (!response.ok) throw new Error('Failed to load recently viewed');
+        recentlyViewedItems = Array.isArray(data) ? data : [];
+    } catch (error) {
+        recentlyViewedItems = [];
+    }
+    renderRecentlyViewed();
+}
+
+function renderRecentlyViewed() {
+    const list = document.getElementById('recently-viewed-list');
+    if (!list) return;
+    if (!recentlyViewedItems.length) {
+        list.innerHTML = '<div class="activity-item">Your recently viewed products will appear here.</div>';
+        return;
+    }
+    list.innerHTML = recentlyViewedItems.map((item) => {
+        const imageUrl = safeProductImage(item.productImage);
+        return '<div class="recent-card" onclick="openSafeUrl(\'' + escapeAttr(item.url) + '\', true)">' +
+            '<div class="recent-card-image">' + (imageUrl ? '<img src="' + escapeAttr(imageUrl) + '" alt="' + escapeAttr(item.productName) + '" loading="lazy">' : '<i class="fa fa-box"></i>') + '</div>' +
+            '<div class="recent-card-info"><strong>' + escapeHtml(item.productName || 'Product') + '</strong><span>' + formatCurrency(item.currencySymbol, item.currentPrice) + '</span><span>' + escapeHtml(formatRelativeTime(item.viewedAt)) + '</span></div>' +
+        '</div>';
+    }).join('');
+}
+
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+        dashboardServiceWorker = await navigator.serviceWorker.register('/service-worker.js');
+    } catch (error) {
+        console.error('Service worker registration failed', error);
+    }
+}
+
+async function togglePushNotifications() {
+    const checkbox = document.getElementById('push-notifications');
+    if (!checkbox) return;
+    if (!checkbox.checked) {
+        await saveNotificationPreferences();
+        showToast('success', 'Push notifications disabled');
+        return;
+    }
+
+    if (!('Notification' in window)) {
+        checkbox.checked = false;
+        showToast('error', 'This browser does not support notifications');
+        return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+        checkbox.checked = false;
+        showToast('error', 'Notification permission was not granted');
+        await saveNotificationPreferences();
+        return;
+    }
+
+    await subscribeForPush();
+    await saveNotificationPreferences();
+    showToast('success', 'Push notifications enabled');
+}
+
+async function subscribeForPush() {
+    if (!dashboardServiceWorker) {
+        await registerServiceWorker();
+    }
+    if (!dashboardServiceWorker || !dashboardServiceWorker.pushManager) return;
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/push-config', { method: 'GET' });
+        const publicKey = response.ok ? (data.publicKey || '') : '';
+        let subscription = await dashboardServiceWorker.pushManager.getSubscription();
+        if (!subscription && publicKey) {
+            subscription = await dashboardServiceWorker.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(publicKey)
+            });
+        }
+        if (!subscription) return;
+        await fetchJsonWithTimeout(API_BASE_URL + '/api/push-subscriptions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: subscription.toJSON() })
+        });
+    } catch (error) {
+        console.error('Push subscription failed', error);
+    }
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
 // ==================== DATA IMPORT/EXPORT ====================
@@ -1128,18 +1696,19 @@ function connectTelegram() {
     modal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3><i class="fa fa-telegram"></i> Connect Telegram</h3>
-                <button class="modal-close" onclick="closeModal('telegram-modal')">&times;</button>
+                <h3><span class="modal-title-brand"><img src="/static/logos/telegram.svg" alt="Telegram logo" class="modal-brand-logo"> Connect Telegram</span></h3>
+                <button type="button" class="modal-close" onclick="closeModal('telegram-modal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="modal-icon telegram-icon">
-                    <i class="fa fa-telegram"></i>
+                    <img src="/static/logos/telegram.svg" alt="Telegram logo" class="modal-channel-logo">
                 </div>
                 <p>Get instant price drop alerts on Telegram!</p>
-                <button class="action-btn" onclick="openSafeUrl('https://t.me/AI_Price_Alert_Bot', true)">
-                    <i class="fa fa-external-link"></i> Open Telegram Bot
+                <button type="button" class="action-btn" onclick="openSafeUrl('https://t.me/AI_Price_Alert_Bot', true)">
+                    <img src="/static/logos/telegram.svg" alt="" class="inline-channel-logo"> Open Telegram Bot
                 </button>
             </div>
+        </div>
     `;
     document.body.appendChild(modal);
     setTimeout(() => modal.classList.add('active'), 10);
@@ -1152,19 +1721,20 @@ function connectWhatsApp() {
     modal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3><i class="fa fa-whatsapp"></i> Connect WhatsApp</h3>
-                <button class="modal-close" onclick="closeModal('whatsapp-modal')">&times;</button>
+                <h3><span class="modal-title-brand"><img src="/static/logos/whatsapp.svg" alt="WhatsApp logo" class="modal-brand-logo"> Connect WhatsApp</span></h3>
+                <button type="button" class="modal-close" onclick="closeModal('whatsapp-modal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="modal-icon whatsapp-icon">
-                    <i class="fa fa-whatsapp"></i>
+                    <img src="/static/logos/whatsapp.svg" alt="WhatsApp logo" class="modal-channel-logo">
                 </div>
                 <p>Get price drop alerts on WhatsApp!</p>
                 <input type="tel" id="whatsapp-number" class="product-input" placeholder="+1234567890" style="width: 100%; margin-bottom: 12px;">
-                <button class="action-btn" onclick="saveWhatsAppNumber()">
-                    <i class="fa fa-check"></i> Connect
+                <button type="button" class="action-btn" onclick="saveWhatsAppNumber()">
+                    <img src="/static/logos/whatsapp.svg" alt="" class="inline-channel-logo"> Connect
                 </button>
             </div>
+        </div>
     `;
     document.body.appendChild(modal);
     setTimeout(() => modal.classList.add('active'), 10);
@@ -1178,9 +1748,61 @@ function closeModal(modalId) {
     }
 }
 
-function saveWhatsAppNumber() {
-    showToast('success', 'WhatsApp connected!');
-    closeModal('whatsapp-modal');
+async function saveWhatsAppNumber() {
+    const phoneInput = document.getElementById('whatsapp-number');
+    const connectButton = document.querySelector('#whatsapp-modal .action-btn');
+    const rawPhone = (phoneInput?.value || '').trim();
+
+    if (!rawPhone) {
+        showToast('error', 'Please enter your WhatsApp number with country code');
+        return;
+    }
+
+    if (connectButton) {
+        connectButton.disabled = true;
+        connectButton.dataset.originalText = connectButton.innerHTML;
+        connectButton.textContent = 'Connecting...';
+    }
+
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/connect-whatsapp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: rawPhone })
+        }, 20000);
+
+        if (!response.ok) {
+            throw new Error(getApiErrorMessage(data, 'Failed to connect WhatsApp'));
+        }
+
+        dashboardUser.phone = data.phone;
+        if (document.getElementById('phone-alerts')) {
+            document.getElementById('phone-alerts').checked = true;
+        }
+        localStorage.setItem('settings', JSON.stringify({
+            ...(JSON.parse(localStorage.getItem('settings') || '{}')),
+            phoneAlerts: true
+        }));
+
+        if (data.whatsappSent) {
+            showToast('success', 'WhatsApp connected. Welcome message sent.');
+        } else {
+            showToast('success', data.message || 'WhatsApp connected successfully.');
+        }
+
+        closeModal('whatsapp-modal');
+        loadNotifications();
+        loadWhatsAppStatus();
+    } catch (error) {
+        showToast('error', error.message || 'Failed to connect WhatsApp');
+    } finally {
+        if (connectButton) {
+            connectButton.disabled = false;
+            if (connectButton.dataset.originalText) {
+                connectButton.innerHTML = connectButton.dataset.originalText;
+            }
+        }
+    }
 }
 
 // Initialize settings on load
@@ -1194,7 +1816,7 @@ let autoRefreshInProgress = false;
 
 function startAutoRefresh() {
     const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-    const intervalSeconds = parseInt(settings.refreshInterval || '5');
+    const intervalSeconds = parseInt(settings.refreshInterval || '900');
     const intervalMs = intervalSeconds * 1000;
     
     // Clear any existing interval
@@ -1231,23 +1853,26 @@ async function autoRefreshAllPrices() {
     try {
         for (const tracker of trackers) {
             try {
-                const response = await fetch(API_BASE_URL + '/get-price', {
+                const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/get-price', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url: tracker.url })
                 });
                 
                 if (response.ok) {
-                    const data = await response.json();
                     const oldPrice = tracker.currentPrice;
                     tracker.currentPrice = data.price;
                     tracker.productName = data.productName || tracker.productName;
+                    tracker.currency = data.currency || tracker.currency;
+                    tracker.currencySymbol = data.currency_symbol || tracker.currencySymbol;
+                    tracker.productImage = data.productImage || tracker.productImage;
                     await syncTrackerUpdate(tracker);
                     
                     // Check if target just reached
                     if (checkPriceReached(tracker) && oldPrice > tracker.targetPrice) {
                         celebrationTracker = tracker;
-                        showCelebration(tracker);
+                        showCelebration(tracker, { mode: 'reached' });
+                        triggerBrowserNotification(tracker);
                     }
                     updatedCount++;
                 }
@@ -1259,6 +1884,14 @@ async function autoRefreshAllPrices() {
         // Update UI
         renderTrackers();
         updateStats();
+        if (currentTracker) {
+            const freshCurrentTracker = trackers.find((item) => item.id === currentTracker.id);
+            if (freshCurrentTracker) {
+                currentTracker = freshCurrentTracker;
+                generateChart(freshCurrentTracker);
+            }
+        }
+        loadNotifications();
         
         // Show notification
         if (updatedCount > 0) {
@@ -1371,24 +2004,67 @@ function restartAutoRefresh() {
 }
 
 function requestNotificationPermission() {
+    const desktopToggle = document.getElementById('desktop-notifications');
     if (!('Notification' in window)) {
+        if (desktopToggle) desktopToggle.checked = false;
         showToast('error', 'This browser does not support desktop notifications');
         return;
     }
     
     if (Notification.permission === 'granted') {
+        if (desktopToggle) desktopToggle.checked = true;
+        saveSettings();
         showToast('success', 'Desktop notifications already enabled');
     } else if (Notification.permission !== 'denied') {
         Notification.requestPermission().then(permission => {
             if (permission === 'granted') {
+                if (desktopToggle) desktopToggle.checked = true;
+                saveSettings();
                 showToast('success', 'Desktop notifications enabled');
                 new Notification('AI Price Alert', {
                     body: 'Notifications enabled successfully!',
-                    icon: '🔔'
+                    icon: '/static/og-image.svg'
                 });
             } else {
+                if (desktopToggle) desktopToggle.checked = false;
+                saveSettings();
                 showToast('error', 'Desktop notifications denied');
             }
+        });
+    } else {
+        if (desktopToggle) desktopToggle.checked = false;
+        saveSettings();
+        showToast('error', 'Desktop notifications are blocked in your browser');
+    }
+}
+
+function desktopNotificationsEnabled() {
+    return !!document.getElementById('desktop-notifications')?.checked && ('Notification' in window) && Notification.permission === 'granted';
+}
+
+async function triggerBrowserNotification(tracker, options = {}) {
+    if (!desktopNotificationsEnabled() && !document.getElementById('push-notifications')?.checked) return;
+    const title = options.title || 'Price target reached';
+    const body = options.body || ((tracker.productName || 'Tracked product') + ' is now ' + formatCurrency(tracker.currencySymbol, tracker.currentPrice));
+    const targetUrl = options.url || tracker.url;
+    const iconUrl = options.icon || tracker.productImage || '/static/og-image.svg';
+    if (dashboardServiceWorker && dashboardServiceWorker.showNotification) {
+        try {
+            await dashboardServiceWorker.showNotification(title, {
+                body,
+                icon: iconUrl,
+                badge: '/static/og-image.svg',
+                data: { url: targetUrl }
+            });
+            return;
+        } catch (error) {
+            console.error('Service worker notification failed', error);
+        }
+    }
+    if (desktopNotificationsEnabled()) {
+        new Notification(title, {
+            body,
+            icon: iconUrl
         });
     }
 }

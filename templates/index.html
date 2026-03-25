@@ -15,13 +15,16 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Price Alerter AI - Dashboard">
     <meta name="twitter:description" content="Track live prices of products from Amazon, Flipkart, Myntra, Ajio, Meesho and 100+ shopping sites. Get instant alerts when prices drop!">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><text y=\'.9em\' font-size=\'90\'>🔔</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="/static/logos/app-icon.svg">
+    <link rel="apple-touch-icon" href="/static/logos/app-icon.svg">
     <link rel="canonical" href="https://pricealerter.in/dashboard">
     <link rel="stylesheet" href="/static/style.css?v=20260228b">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     
     <!-- Google AdSense -->
     <meta name="google-adsense-account" content="ca-pub-1181608933401999">
@@ -127,7 +130,7 @@
 <div class="app-sidebar">
                 <div class="app-logo">
                     <div class="logo-icon">
-                        <i class="fa fa-bell"></i>
+                        <img src="/static/logos/app-icon.svg" alt="Price Alerter logo">
                     </div>
                     <div class="logo-text">
                         <span class="logo-name">Price Alerter AI</span>
@@ -179,6 +182,7 @@
                         </div>
                         
                         <div class="supported-sites">
+                            <span><strong>Global support:</strong> Works with direct product pages from stores worldwide.</span>
                             <span><img class="brand-logo" src="/static/logos/amazon.svg?v=20260228" alt="Amazon logo"> Amazon</span>
                             <span><img class="brand-logo" src="/static/logos/flipkart.svg?v=20260228" alt="Flipkart logo"> Flipkart</span>
                             <span><img class="brand-logo" src="/static/logos/myntra.svg?v=20260228" alt="Myntra logo"> Myntra</span>
@@ -288,11 +292,45 @@
                     </div>
                     <section class="activity-panel">
                         <div class="activity-head">
+                            <h3><img src="/static/logos/whatsapp.svg" alt="WhatsApp" class="panel-channel-logo"> WhatsApp Alerts</h3>
+                            <button class="btn-secondary small" type="button" onclick="loadWhatsAppStatus()">Refresh</button>
+                        </div>
+                        <div id="whatsapp-status-card" class="channel-status-card">
+                            <div class="channel-status-icon whatsapp">
+                                <img src="/static/logos/whatsapp.svg" alt="WhatsApp logo">
+                            </div>
+                            <div class="channel-status-content">
+                                <strong id="whatsapp-status-title">Checking WhatsApp connection...</strong>
+                                <span id="whatsapp-status-text">We are loading your channel status.</span>
+                            </div>
+                            <button type="button" class="btn-secondary small" id="whatsapp-status-action" onclick="connectWhatsApp()">Connect</button>
+                        </div>
+                    </section>
+                    <section class="activity-panel">
+                        <div class="activity-head">
                             <h3><i class="fa fa-clock-rotate-left"></i> Recent Activity</h3>
                             <button class="btn-secondary small" type="button" onclick="renderActivityFeed()">Refresh</button>
                         </div>
                         <div id="activity-feed" class="activity-feed">
                             <div class="activity-item">No activity yet.</div>
+                        </div>
+                    </section>
+                    <section class="activity-panel">
+                        <div class="activity-head">
+                            <h3><i class="fa fa-eye"></i> Recently Viewed</h3>
+                            <button class="btn-secondary small" type="button" onclick="loadRecentlyViewed()">Refresh</button>
+                        </div>
+                        <div id="recently-viewed-list" class="recently-viewed-grid">
+                            <div class="activity-item">Your recently viewed products will appear here.</div>
+                        </div>
+                    </section>
+                    <section class="activity-panel">
+                        <div class="activity-head">
+                            <h3><i class="fa fa-bell"></i> Notification Center</h3>
+                            <button class="btn-secondary small" type="button" onclick="loadNotifications()">Refresh</button>
+                        </div>
+                        <div id="notification-feed" class="activity-feed">
+                            <div class="activity-item">No notifications yet.</div>
                         </div>
                     </section>
                     
@@ -316,7 +354,8 @@
                     
                     <div class="product-preview" id="product-preview">
                         <div class="product-image">
-                            <i class="fa fa-shopping-bag"></i>
+                            <img id="trend-product-image" alt="Tracked product preview" loading="lazy" style="display:none;">
+                            <i class="fa fa-shopping-bag" id="trend-product-icon"></i>
                         </div>
                         <div class="product-details">
                             <h3>Select a tracker to view trends</h3>
@@ -428,7 +467,7 @@
                                     <label>Push Notifications</label>
                                     <p>Get browser notifications when price drops</p>
                                 </div>
-                                <input type="checkbox" id="push-notifications" checked onchange="saveSettings()">
+                                <input type="checkbox" id="push-notifications" checked onchange="togglePushNotifications()">
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
@@ -453,17 +492,31 @@
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
+                                    <label>Phone Alerts</label>
+                                    <p>Send WhatsApp or SMS if your account has a phone number</p>
+                                </div>
+                                <input type="checkbox" id="phone-alerts" onchange="saveSettings()">
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
                                     <label>Telegram Bot</label>
                                     <p>Receive instant alerts on Telegram</p>
                                 </div>
-                                <button class="btn-secondary small" onclick="connectTelegram()">Connect</button>
+                                <button type="button" class="btn-secondary small" onclick="connectTelegram()">Connect</button>
                             </div>
                             <div class="setting-item">
                                 <div class="setting-info">
                                     <label>WhatsApp Notifications</label>
                                     <p>Get price alerts on WhatsApp</p>
                                 </div>
-                                <button class="btn-secondary small" onclick="connectWhatsApp()">Connect</button>
+                                <button type="button" class="btn-secondary small" onclick="connectWhatsApp()">Connect</button>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <label>WhatsApp Channel</label>
+                                    <p>Join our official WhatsApp channel for updates</p>
+                                </div>
+                                <button type="button" class="btn-secondary small" onclick="openSafeUrl('https://whatsapp.com/channel/0029Vb7dBD5GpLHLcWWGq40q', true)">Join Channel</button>
                             </div>
                         </div>
 
@@ -503,10 +556,10 @@
                                     <p>How often to check prices</p>
                                 </div>
                                 <select id="refresh-interval" onchange="saveSettings(); restartAutoRefresh();">
-                                    <option value="5" selected>Every 5 seconds</option>
-                                    <option value="10">Every 10 seconds</option>
-                                    <option value="15">Every 15 seconds</option>
-                                    <option value="30">Every 30 seconds</option>
+                                    <option value="300">Every 5 minutes</option>
+                                    <option value="900" selected>Every 15 minutes</option>
+                                    <option value="1800">Every 30 minutes</option>
+                                    <option value="3600">Every 60 minutes</option>
                                 </select>
                             </div>
                             <div class="setting-item">
@@ -687,7 +740,7 @@
                             <h3><i class="fa fa-info-circle"></i> About</h3>
                             <div class="about-info">
                                 <div class="about-logo">
-                                    <i class="fa fa-bell"></i>
+                                    <img src="/static/logos/app-icon.svg" alt="Price Alerter logo">
                                 </div>
                                 <p><strong>Price Alerter AI v2.0</strong></p>
                                 <p>Smart price tracking assistant</p>

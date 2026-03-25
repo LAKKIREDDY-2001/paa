@@ -36,7 +36,7 @@
     <div class="content-page">
         <header class="page-header">
             <div class="logo">
-                <i class="fa fa-bell"></i>
+                <img src="/static/logos/app-icon.svg" alt="Price Alerter logo" class="app-brand-logo">
                 <span>AI Price Alert</span>
             </div>
             <nav class="page-nav">
@@ -165,7 +165,7 @@
             <div class="footer-content">
                 <div class="footer-brand">
                     <div class="logo">
-                        <i class="fa fa-bell"></i>
+                        <img src="/static/logos/app-icon.svg" alt="Price Alerter logo" class="app-brand-logo">
                         <span>AI Price Alert</span>
                     </div>
                     <p>Smart price tracking for smart shoppers.</p>
@@ -208,8 +208,11 @@
             font-weight: 700;
         }
         
-        .logo i {
-            color: var(--accent-orange);
+        .logo .app-brand-logo {
+            width: 28px;
+            height: 28px;
+            object-fit: cover;
+            flex-shrink: 0;
         }
         
         .page-nav {
