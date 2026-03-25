@@ -1,8 +1,0 @@
-{
-  "enabled": false,
-  "twilio_account_sid": "YOUR_ACCOUNT_SID",
-  "twilio_auth_token": "YOUR_AUTH_TOKEN",
-  "twilio_whatsapp_number": "+14155238886",
-  "from_name": "AI Price Alert"
-}
-
