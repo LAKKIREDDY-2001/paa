@@ -39,6 +39,7 @@ rate_limit_lock = threading.Lock()
 price_cache_lock = threading.Lock()
 RATE_LIMIT_STATE = {}
 PRODUCT_SNAPSHOT_CACHE = {}
+DEFAULT_SITE_URL = os.environ.get('SITE_URL', 'https://pricealerter.in').rstrip('/')
 
 IS_PRODUCTION = os.environ.get('APP_ENV', '').lower() in ['production', 'prod'] or \
     os.environ.get('FLASK_ENV', '').lower() == 'production'
@@ -220,6 +221,16 @@ def api_error(message, status=400, details=None):
     if details:
         payload["details"] = details
     return jsonify(payload), status
+
+
+def current_site_url():
+    host = request.host_url.rstrip('/') if request else ''
+    return host or DEFAULT_SITE_URL
+
+
+def absolute_url(path="/"):
+    normalized = path if str(path).startswith('/') else f'/{path}'
+    return f"{current_site_url()}{normalized}"
 
 
 def get_request_json():
@@ -3275,9 +3286,25 @@ def service_worker():
     return response
 
 
+@app.route('/favicon.ico')
+def favicon():
+    response = make_response(send_from_directory('static/logos', 'app-icon.svg'))
+    response.headers['Content-Type'] = 'image/svg+xml'
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
+
+
+@app.route('/site.webmanifest')
+def site_webmanifest():
+    response = make_response(send_from_directory('static', 'site.webmanifest'))
+    response.headers['Content-Type'] = 'application/manifest+json; charset=utf-8'
+    response.headers['Cache-Control'] = 'public, max-age=3600'
+    return response
+
+
 @app.route('/robots.txt')
 def robots_txt():
-    host = request.host_url.rstrip('/')
+    host = current_site_url()
     content = f"""User-agent: Mediapartners-Google
 Allow: /
 
@@ -3290,6 +3317,7 @@ Allow: /
 User-agent: *
 Allow: /
 
+Host: {host}
 Sitemap: {host}/sitemap.xml
 """
     response = make_response(content)
@@ -3304,28 +3332,110 @@ def ads_txt():
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    host = request.host_url.rstrip('/')
+    host = current_site_url()
     entries = [
-        ("/", "2026-02-27", "daily", "1.0"),
-        ("/home", "2026-02-27", "weekly", "0.9"),
-        ("/about", "2026-02-27", "monthly", "0.6"),
-        ("/contact", "2026-02-27", "monthly", "0.6"),
-        ("/privacy", "2026-02-27", "yearly", "0.4"),
-        ("/terms", "2026-02-27", "yearly", "0.4"),
-        ("/blog", "2026-02-27", "weekly", "0.8"),
-        ("/amp/home", "2026-02-27", "weekly", "0.7"),
-        ("/blog/how-to-track-product-prices-online", "2026-02-27", "monthly", "0.7"),
-        ("/blog/best-price-alert-tools-india", "2026-02-27", "monthly", "0.7"),
-        ("/blog/save-money-price-trackers", "2026-02-27", "monthly", "0.7"),
-        ("/blog/amazon-price-history", "2026-02-27", "monthly", "0.7")
+        {
+            "path": "/",
+            "lastmod": "2026-03-26",
+            "changefreq": "daily",
+            "priority": "1.0",
+            "images": [
+                absolute_url('/static/og-image.svg'),
+                absolute_url('/static/logos/app-icon.svg')
+            ]
+        },
+        {
+            "path": "/home",
+            "lastmod": "2026-03-26",
+            "changefreq": "weekly",
+            "priority": "0.9",
+            "images": [absolute_url('/static/og-image.svg')]
+        },
+        {
+            "path": "/about",
+            "lastmod": "2026-03-26",
+            "changefreq": "monthly",
+            "priority": "0.6",
+            "images": [absolute_url('/static/logos/app-icon.svg')]
+        },
+        {
+            "path": "/contact",
+            "lastmod": "2026-03-26",
+            "changefreq": "monthly",
+            "priority": "0.6",
+            "images": [absolute_url('/static/logos/app-icon.svg')]
+        },
+        {
+            "path": "/privacy",
+            "lastmod": "2026-03-26",
+            "changefreq": "yearly",
+            "priority": "0.4",
+            "images": [absolute_url('/static/logos/app-icon.svg')]
+        },
+        {
+            "path": "/terms",
+            "lastmod": "2026-03-26",
+            "changefreq": "yearly",
+            "priority": "0.4",
+            "images": [absolute_url('/static/logos/app-icon.svg')]
+        },
+        {
+            "path": "/blog",
+            "lastmod": "2026-03-26",
+            "changefreq": "weekly",
+            "priority": "0.8",
+            "images": [absolute_url('/static/og-image.svg')]
+        },
+        {
+            "path": "/amp/home",
+            "lastmod": "2026-03-26",
+            "changefreq": "weekly",
+            "priority": "0.7",
+            "images": [absolute_url('/static/og-image.svg')]
+        },
+        {
+            "path": "/blog/how-to-track-product-prices-online",
+            "lastmod": "2026-03-26",
+            "changefreq": "monthly",
+            "priority": "0.7",
+            "images": [absolute_url('/static/og-image.svg')]
+        },
+        {
+            "path": "/blog/best-price-alert-tools-india",
+            "lastmod": "2026-03-26",
+            "changefreq": "monthly",
+            "priority": "0.7",
+            "images": [absolute_url('/static/og-image.svg')]
+        },
+        {
+            "path": "/blog/save-money-price-trackers",
+            "lastmod": "2026-03-26",
+            "changefreq": "monthly",
+            "priority": "0.7",
+            "images": [absolute_url('/static/og-image.svg')]
+        },
+        {
+            "path": "/blog/amazon-price-history",
+            "lastmod": "2026-03-26",
+            "changefreq": "monthly",
+            "priority": "0.7",
+            "images": [absolute_url('/static/og-image.svg')]
+        }
     ]
-    items = "\n".join([
-        f"<url><loc>{host}{path}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq><priority>{priority}</priority></url>"
-        for path, lastmod, freq, priority in entries
-    ])
+    items = []
+    for entry in entries:
+        image_xml = "".join(
+            f"<image:image><image:loc>{image_url}</image:loc></image:image>"
+            for image_url in entry.get("images", [])
+        )
+        items.append(
+            f"<url><loc>{host}{entry['path']}</loc><lastmod>{entry['lastmod']}</lastmod>"
+            f"<changefreq>{entry['changefreq']}</changefreq><priority>{entry['priority']}</priority>{image_xml}</url>"
+        )
     content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-{items}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+{''.join(items)}
 </urlset>"""
     response = make_response(content)
     response.headers['Content-Type'] = 'application/xml; charset=utf-8'
