@@ -90,6 +90,10 @@
                 </h2>
                 
                 <p class="celebration-product" id="celeb-product-name">Loading...</p>
+                <div class="celebration-meta" id="celeb-meta">
+                    <span id="celeb-store">Store</span>
+                    <span id="celeb-last-check">Just now</span>
+                </div>
                 
                 <div class="celebration-price">
                     <div class="price-badge">
@@ -100,6 +104,7 @@
                         <span class="savings-amount" id="celeb-savings">$0.00</span>
                     </div>
                 </div>
+                <div class="celebration-summary" id="celeb-summary">Product details will appear here.</div>
                 
                 <div class="celebration-actions">
                     <button class="celebration-btn primary" onclick="buyNowFromCelebration()">
@@ -572,10 +577,10 @@
                                     <p>How often to check prices</p>
                                 </div>
                                 <select id="refresh-interval" onchange="saveSettings(); restartAutoRefresh();">
-                                    <option value="300">Every 5 minutes</option>
-                                    <option value="900" selected>Every 15 minutes</option>
-                                    <option value="1800">Every 30 minutes</option>
-                                    <option value="3600">Every 60 minutes</option>
+                                    <option value="5" selected>Every 5 seconds</option>
+                                    <option value="15">Every 15 seconds</option>
+                                    <option value="30">Every 30 seconds</option>
+                                    <option value="60">Every 1 minute</option>
                                 </select>
                             </div>
                             <div class="setting-item">
@@ -676,15 +681,6 @@
                                 </div>
                                 <button class="btn-secondary small">
                                     <i class="fa fa-chrome"></i> Get
-                                </button>
-                            </div>
-                            <div class="setting-item">
-                                <div class="setting-info">
-                                    <label>API Access</label>
-                                    <p>Use API for custom integrations</p>
-                                </div>
-                                <button class="btn-secondary small" onclick="showApiKey()">
-                                    <i class="fa fa-key"></i> View API
                                 </button>
                             </div>
                         </div>

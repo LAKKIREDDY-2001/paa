@@ -13,6 +13,7 @@ let currentTrendPeriod = 30;
 let dashboardServiceWorker = null;
 let priceChartInstance = null;
 let expandedTrackerIds = new Set();
+let autoRefreshCountdown = 0;
 
 // Safe API_BASE_URL - fallback to empty string if window.location is not available
 const getApiBaseUrl = () => {
@@ -280,6 +281,9 @@ function showCelebration(tracker, options = {}) {
     const modal = document.getElementById('celebration-modal');
     const productNameEl = document.getElementById('celeb-product-name');
     const savingsEl = document.getElementById('celeb-savings');
+    const summaryEl = document.getElementById('celeb-summary');
+    const storeEl = document.getElementById('celeb-store');
+    const lastCheckEl = document.getElementById('celeb-last-check');
     const titleEl = document.querySelector('.celebration-title');
     const priceDropEl = document.querySelector('.price-drop');
     const savingsLabelEl = document.querySelector('.savings-label');
@@ -296,6 +300,8 @@ function showCelebration(tracker, options = {}) {
         modal.classList.remove('mode-created', 'mode-reached');
         modal.classList.add(mode === 'created' ? 'mode-created' : 'mode-reached');
         productNameEl.textContent = tracker.productName || 'Product';
+        if (storeEl) storeEl.textContent = detectStore(tracker.url);
+        if (lastCheckEl) lastCheckEl.textContent = tracker.lastCheckedAt ? formatRelativeTime(tracker.lastCheckedAt) : 'Just added';
 
         if (mode === 'created') {
             if (titleEl) {
@@ -304,6 +310,10 @@ function showCelebration(tracker, options = {}) {
             if (priceDropEl) priceDropEl.textContent = 'TRACKING STARTED';
             if (savingsLabelEl) savingsLabelEl.textContent = 'Target Price';
             if (savingsEl) savingsEl.textContent = `${tracker.currencySymbol || '$'}${Number(tracker.targetPrice || 0).toFixed(2)}`;
+            if (summaryEl) {
+                summaryEl.innerHTML = '<strong>Current price:</strong> ' + formatCurrency(tracker.currencySymbol, tracker.currentPrice) +
+                    ' <span class="summary-divider">•</span> <strong>Target:</strong> ' + formatCurrency(tracker.currencySymbol, tracker.targetPrice);
+            }
             if (primaryBtn) {
                 primaryBtn.innerHTML = '<i class="fa fa-chart-line"></i> View Trends';
                 primaryBtn.onclick = () => {
@@ -320,8 +330,12 @@ function showCelebration(tracker, options = {}) {
             }
             if (priceDropEl) priceDropEl.textContent = '⬇️ PRICE DROP!';
             if (savingsLabelEl) savingsLabelEl.textContent = 'You Save';
-            const saved = Number(tracker.currentPrice || 0) - Number(tracker.targetPrice || 0);
+            const saved = Number(tracker.targetPrice || 0) - Number(tracker.currentPrice || 0);
             if (savingsEl) savingsEl.textContent = `${tracker.currencySymbol || '$'}${Math.abs(saved).toFixed(2)}`;
+            if (summaryEl) {
+                summaryEl.innerHTML = '<strong>Current price:</strong> ' + formatCurrency(tracker.currencySymbol, tracker.currentPrice) +
+                    ' <span class="summary-divider">•</span> <strong>Target hit at:</strong> ' + formatCurrency(tracker.currencySymbol, tracker.targetPrice);
+            }
             if (primaryBtn) {
                 primaryBtn.innerHTML = '<i class="fa fa-shopping-cart"></i> Buy Now';
                 primaryBtn.onclick = () => buyNowFromCelebration();
@@ -908,13 +922,13 @@ function renderTrackers() {
             '<div class="tracker-detail-note"><i class="fa fa-sparkles"></i> ' + insightSummary + '</div>' +
         '</div>';
 
-        return '<div class="tracker-card tilt-3d tracker-card-' + status + ' tracker-store-' + storeTone + '" style="animation-delay:' + animationDelay + 'ms" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link">' +
+        return '<article class="tracker-card tilt-3d tracker-card-' + status + ' tracker-store-' + storeTone + '" style="animation-delay:' + animationDelay + 'ms" data-id="' + tracker.id + '" data-url="' + safeUrlAttr + '" tabindex="0" role="button" aria-label="Open tracker link">' +
             '<div class="tracker-header"><div class="tracker-info">' + imageMarkup + '<div class="tracker-title-block"><h4 class="tracker-name">' + safeName + '</h4><div class="tracker-meta-row"><span class="meta-pill"><i class="fa fa-lightbulb"></i> ' + insightLabel + '</span><span class="meta-pill"><i class="fa fa-clock"></i> ' + escapeHtml(lastChecked) + '</span></div></div></div><div class="tracker-checkbox" onclick="event.stopPropagation(); toggleSelect(' + tracker.id + ')"><i class="fa fa-check" style="display: none;"></i></div></div>' +
             '<button type="button" class="tracker-url tracker-url-link" onclick="event.stopPropagation(); openTrackerUrlFromElement(this)">' + safeUrlText + '</button>' +
             '<div class="tracker-prices"><div class="price-info current"><span class="price-label">Current</span><span class="price-amount">' + formatCurrency(tracker.currencySymbol, tracker.currentPrice) + '</span></div><div class="price-info target"><span class="price-label">Target</span><span class="price-amount">' + formatCurrency(tracker.currencySymbol, tracker.targetPrice) + '</span></div><div class="price-status ' + statusClass + '">' + statusText + '</div></div>' +
             trackerError +
             detailsSection +
-            '<div class="tracker-actions"><button type="button" class="tracker-action" onclick="event.stopPropagation(); toggleTrackerDetails(' + tracker.id + ')"><i class="fa fa-chevron-' + (isExpanded ? 'up' : 'down') + '"></i> ' + (isExpanded ? 'Less' : 'Details') + '</button><button type="button" class="tracker-action" onclick="event.stopPropagation(); viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button type="button" class="tracker-action" onclick="event.stopPropagation(); refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button type="button" class="tracker-action delete" onclick="event.stopPropagation(); deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div>';
+            '<div class="tracker-actions"><button type="button" class="tracker-action" onclick="event.stopPropagation(); toggleTrackerDetails(' + tracker.id + ')"><i class="fa fa-chevron-' + (isExpanded ? 'up' : 'down') + '"></i> ' + (isExpanded ? 'Less' : 'Details') + '</button><button type="button" class="tracker-action" onclick="event.stopPropagation(); viewTrends(' + tracker.id + ')"><i class="fa fa-chart-line"></i> Trends</button><button type="button" class="tracker-action" onclick="event.stopPropagation(); refreshPrice(' + tracker.id + ')"><i class="fa fa-refresh"></i> Refresh</button><button type="button" class="tracker-action delete" onclick="event.stopPropagation(); deleteTracker(' + tracker.id + ')"><i class="fa fa-trash"></i></button></div></article>';
     }).join('');
     
     attachTrackerCardClickHandlers();
@@ -1419,9 +1433,16 @@ function loadSettings() {
     if (settings.darkMode !== undefined) document.getElementById('dark-mode').checked = settings.darkMode;
     if (settings.compactView !== undefined) document.getElementById('compact-view').checked = settings.compactView;
     if (settings.refreshInterval !== undefined) {
-        document.getElementById('refresh-interval').value = settings.refreshInterval;
+        const normalizedRefresh = ['5', '15', '30', '60'].includes(String(settings.refreshInterval))
+            ? String(settings.refreshInterval)
+            : '5';
+        document.getElementById('refresh-interval').value = normalizedRefresh;
+        if (normalizedRefresh !== String(settings.refreshInterval)) {
+            settings.refreshInterval = normalizedRefresh;
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
     } else {
-        document.getElementById('refresh-interval').value = '900';
+        document.getElementById('refresh-interval').value = '5';
     }
     if (settings.autoDelete !== undefined) document.getElementById('auto-delete').value = settings.autoDelete;
     if (settings.dropPercentage !== undefined) document.getElementById('drop-percentage').value = settings.dropPercentage;
@@ -1866,7 +1887,7 @@ let autoRefreshInProgress = false;
 
 function startAutoRefresh() {
     const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-    const intervalSeconds = parseInt(settings.refreshInterval || '900');
+    const intervalSeconds = Math.max(5, parseInt(settings.refreshInterval || '5', 10));
     const intervalMs = intervalSeconds * 1000;
     
     // Clear any existing interval
@@ -1898,6 +1919,7 @@ async function autoRefreshAllPrices() {
     
     console.log('Auto-refreshing all prices...');
     lastRefreshTime = new Date();
+    autoRefreshCountdown = 0;
     
     let updatedCount = 0;
     try {
@@ -1946,7 +1968,6 @@ async function autoRefreshAllPrices() {
         // Show notification
         if (updatedCount > 0) {
             logActivity('Auto-refresh complete', 'Updated ' + updatedCount + ' tracker(s)');
-            showToast('success', `Auto-refreshed ${updatedCount} tracker(s)`);
         }
     } finally {
         autoRefreshInProgress = false;
@@ -1961,10 +1982,10 @@ function updateAutoRefreshUI(intervalSeconds) {
         if (!refreshIndicator) {
             refreshIndicator = document.createElement('div');
             refreshIndicator.id = 'auto-refresh-indicator';
-            refreshIndicator.className = 'stat-item';
+            refreshIndicator.className = 'stat-item auto-refresh-panel';
             refreshIndicator.innerHTML = `
-                <span class="stat-value" id="refresh-timer"><i class="fa fa-sync fa-spin"></i></span>
                 <span class="stat-label">Auto-refresh</span>
+                <span class="stat-value refresh-timer-pill" id="refresh-timer"><i class="fa fa-sync fa-spin"></i> 0:05</span>
             `;
             sidebarStats.appendChild(refreshIndicator);
         }
@@ -1973,21 +1994,21 @@ function updateAutoRefreshUI(intervalSeconds) {
     // Update refresh timer display
     const refreshTimer = document.getElementById('refresh-timer');
     if (refreshTimer) {
-        let secondsRemaining = intervalSeconds;
-        refreshTimer.innerHTML = `<i class="fa fa-sync fa-spin"></i> ${formatTime(secondsRemaining)}`;
+        autoRefreshCountdown = intervalSeconds;
+        refreshTimer.innerHTML = `<i class="fa fa-sync fa-spin"></i> ${formatTime(autoRefreshCountdown)}`;
         
         // Update timer every second
         if (window.refreshTimerInterval) {
             clearInterval(window.refreshTimerInterval);
         }
         window.refreshTimerInterval = setInterval(() => {
-            secondsRemaining--;
-            if (secondsRemaining <= 0) {
-                secondsRemaining = intervalSeconds;
+            autoRefreshCountdown--;
+            if (autoRefreshCountdown <= 0) {
+                autoRefreshCountdown = intervalSeconds;
             }
             const timerEl = document.getElementById('refresh-timer');
             if (timerEl) {
-                timerEl.innerHTML = `<i class="fa fa-sync fa-spin"></i> ${formatTime(secondsRemaining)}`;
+                timerEl.innerHTML = `<i class="fa fa-sync fa-spin"></i> ${formatTime(autoRefreshCountdown)}`;
             }
         }, 1000);
     }
@@ -2123,31 +2144,6 @@ async function triggerBrowserNotification(tracker, options = {}) {
             icon: iconUrl
         });
     }
-}
-
-function showApiKey() {
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.id = 'api-modal';
-    modal.innerHTML = `
-        <div class="modal">
-            <div class="modal-header">
-                <h3><i class="fa fa-shield"></i> Integrations</h3>
-                <button class="modal-close" onclick="closeModal('api-modal')">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p>Custom integrations are enabled only through secure server-side setup.</p>
-                <div class="api-key-display safe-note">
-                    <strong>Keys and tokens are never exposed in the customer dashboard.</strong>
-                </div>
-                <p class="api-docs-link">
-                    <a href="/contact">Contact us for integration access</a>
-                </p>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    setTimeout(() => modal.classList.add('active'), 10);
 }
 
 function showFeedbackModal() {

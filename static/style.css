@@ -4075,3 +4075,100 @@ input[type="number"]:focus {
         padding: 16px 18px !important;
     }
 }
+
+/* ============================================
+   TRACKER LAYOUT + TIMER CLARITY OVERRIDES
+   ============================================ */
+
+.trackers-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 28px !important;
+}
+
+.tracker-card {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px;
+    min-height: 100%;
+}
+
+.tracker-actions {
+    margin-top: auto;
+}
+
+.auto-refresh-panel {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+}
+
+.refresh-timer-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 104px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: #fff3ee;
+    color: var(--brand-orange) !important;
+    font-size: 0.95rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.01em;
+    border: 1px solid rgba(244, 96, 12, 0.18);
+    box-shadow: 0 10px 22px rgba(244, 96, 12, 0.14);
+}
+
+.celebration-meta {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.celebration-meta span {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #fff3ee;
+    color: var(--text-strong);
+    border: 1px solid rgba(244, 96, 12, 0.16);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.celebration-summary {
+    margin: 0 auto 18px;
+    max-width: 380px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #f7f8fc;
+    border: 1px solid #e2e6ef;
+    color: var(--text-strong);
+    line-height: 1.6;
+}
+
+.summary-divider {
+    color: #94a3b8;
+    padding: 0 8px;
+}
+
+@media (max-width: 1180px) {
+    .trackers-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 700px) {
+    .refresh-timer-pill {
+        min-width: 90px;
+        font-size: 0.85rem !important;
+        padding: 8px 12px;
+    }
+
+    .celebration-summary {
+        font-size: 0.92rem;
+    }
+}
