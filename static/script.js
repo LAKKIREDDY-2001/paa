@@ -24,6 +24,7 @@ const getApiBaseUrl = () => {
     }
 };
 const API_BASE_URL = getApiBaseUrl();
+const AUTH_HINT_KEY = 'pricealerter_auth_hint';
 
 const nativeWindowOpen = (window && typeof window.open === 'function')
     ? window.open.bind(window)
@@ -55,7 +56,12 @@ async function fetchJsonWithTimeout(url, options = {}, timeoutMs = 15000) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const response = await fetch(url, { ...options, signal: controller.signal });
+        const response = await fetch(url, {
+            credentials: 'include',
+            cache: 'no-store',
+            ...options,
+            signal: controller.signal
+        });
         const rawText = await response.text();
         let data = {};
         try {
@@ -75,6 +81,52 @@ function getApiErrorMessage(data, fallback) {
         return `${data.error} Suggested URL: ${data.suggestedUrl}`;
     }
     return data.error || fallback;
+}
+
+function persistAuthHint(user = {}) {
+    try {
+        localStorage.setItem(AUTH_HINT_KEY, JSON.stringify({
+            userId: user.id || null,
+            email: user.email || '',
+            username: user.username || '',
+            updatedAt: new Date().toISOString()
+        }));
+    } catch (e) {
+        console.log('Could not persist auth hint');
+    }
+}
+
+function clearAuthHint() {
+    try {
+        localStorage.removeItem(AUTH_HINT_KEY);
+    } catch (e) {
+        console.log('Could not clear auth hint');
+    }
+}
+
+function applyUserData(user) {
+    if (!user) return;
+    dashboardUser = user;
+    const greeting = document.getElementById('user-greeting');
+    if (greeting && user.username) {
+        greeting.textContent = 'Welcome, ' + user.username;
+    }
+    persistAuthHint(user);
+}
+
+async function ensureAuthenticatedSession() {
+    try {
+        const { response, data } = await fetchJsonWithTimeout(API_BASE_URL + '/api/user', { method: 'GET' }, 10000);
+        if (!response.ok) {
+            clearAuthHint();
+            return false;
+        }
+        applyUserData(data);
+        return true;
+    } catch (error) {
+        clearAuthHint();
+        return false;
+    }
 }
 
 // Celebration Configuration
@@ -115,6 +167,7 @@ function initDashboardApp() {
 }
 
 function handleLogout() {
+    clearAuthHint();
     const doRedirect = () => {
         const ts = Date.now();
         window.location.assign('/logout?t=' + ts);
@@ -420,16 +473,13 @@ function initTilt() {
 // ==================== USER & NAVIGATION ====================
 
 async function loadUserData() {
-    try {
-        const response = await fetch(API_BASE_URL + '/api/user');
-        if (response.ok) {
-            const user = await response.json();
-            if (user.username) {
-                document.getElementById('user-greeting').textContent = 'Welcome, ' + user.username;
-                dashboardUser = user;
-            }
-        }
-    } catch (error) {
+    if (dashboardUser && dashboardUser.id) {
+        applyUserData(dashboardUser);
+        return;
+    }
+
+    const authenticated = await ensureAuthenticatedSession();
+    if (!authenticated) {
         console.log('User not logged in');
     }
 }
@@ -1976,7 +2026,13 @@ function addManualRefreshButton() {
 
 // Start auto-refresh on page load
 document.addEventListener('DOMContentLoaded', () => {
-    initDashboardApp();
+    ensureAuthenticatedSession().then((authenticated) => {
+        if (!authenticated) {
+            window.location.replace('/login');
+            return;
+        }
+        initDashboardApp();
+    });
 });
 
 // Stop auto-refresh when leaving the page

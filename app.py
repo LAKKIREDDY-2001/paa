@@ -49,10 +49,15 @@ app.secret_key = os.environ.get('SECRET_KEY', 'price-alerter-secret-key-2024-cha
 if IS_PRODUCTION and not os.environ.get('SECRET_KEY'):
     print("WARNING: SECRET_KEY is not set in production. Set SECRET_KEY environment variable.")
 
+COOKIE_DOMAIN = os.environ.get('COOKIE_DOMAIN', '').strip()
+if not COOKIE_DOMAIN and IS_PRODUCTION:
+    COOKIE_DOMAIN = '.pricealerter.in'
+
 # Session configuration - optimized for persistent login
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # Changed from 'Strict' for better compatibility
 app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_DOMAIN'] = COOKIE_DOMAIN or None
 app.config['SESSION_TYPE'] = os.environ.get('SESSION_TYPE', 'filesystem')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)  # 30 days persistent session
 app.config['SESSION_COOKIE_NAME'] = 'price_alerter_session'  # Custom session cookie name
@@ -60,7 +65,18 @@ app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'price_alerter:'
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
-CORS(app, supports_credentials=True, origins="*")
+CORS(
+    app,
+    supports_credentials=True,
+    origins=[
+        origin.strip()
+        for origin in os.environ.get(
+            'CORS_ORIGINS',
+            'https://pricealerter.in,https://app.pricealerter.in,http://localhost:8081,http://127.0.0.1:8081'
+        ).split(',')
+        if origin.strip()
+    ]
+)
 
 # Enable permanent sessions by default
 @app.before_request
@@ -69,6 +85,94 @@ def make_session_permanent():
     if not session.get('permanent'):
         session.permanent = True
     g.request_started_at = time.time()
+
+
+def remember_cookie_domain():
+    return app.config.get('SESSION_COOKIE_DOMAIN') or None
+
+
+def set_remember_cookie(response, token):
+    cookie_kwargs = {
+        "max_age": 60 * 60 * 24 * 365,
+        "httponly": True,
+        "samesite": app.config.get('SESSION_COOKIE_SAMESITE', 'Lax'),
+        "secure": app.config.get('SESSION_COOKIE_SECURE', False),
+        "path": "/"
+    }
+    domain = remember_cookie_domain()
+    if domain:
+        cookie_kwargs["domain"] = domain
+    response.set_cookie('remember_token', token, **cookie_kwargs)
+
+
+def clear_remember_cookie(response):
+    cookie_kwargs = {"path": "/"}
+    domain = remember_cookie_domain()
+    if domain:
+        cookie_kwargs["domain"] = domain
+    response.delete_cookie('remember_token', **cookie_kwargs)
+
+
+def clear_auth_cookies(response):
+    cookie_kwargs = {"path": "/"}
+    domain = remember_cookie_domain()
+    if domain:
+        cookie_kwargs["domain"] = domain
+    response.delete_cookie('remember_token', **cookie_kwargs)
+    response.delete_cookie(app.config.get('SESSION_COOKIE_NAME', 'session'), **cookie_kwargs)
+
+
+def restore_user_session_from_cookie():
+    global _app_initialized
+    g.current_user = None
+
+    if not _app_initialized:
+        initialize_app()
+        _app_initialized = True
+
+    user_id = session.get('user_id')
+    if user_id:
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, username, email FROM users WHERE id = ?", (user_id,))
+            user = cursor.fetchone()
+            conn.close()
+            if user:
+                session['username'] = user['username']
+                session['email'] = user['email']
+                g.current_user = user
+                return
+        except Exception as e:
+            logger.warning("Session validation failed for user_id=%s: %s", user_id, e)
+        session.clear()
+
+    remember_token = (request.cookies.get('remember_token') or '').strip()
+    if not remember_token:
+        return
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, email FROM users WHERE remember_token = ?", (remember_token,))
+        user = cursor.fetchone()
+        conn.close()
+        if not user:
+            return
+        session['user_id'] = user['id']
+        session['username'] = user['username']
+        session['email'] = user['email']
+        session.permanent = True
+        session.modified = True
+        g.current_user = user
+        logger.info("session_restored_from_remember_cookie user_id=%s path=%s", user['id'], request.path)
+    except Exception as e:
+        logger.warning("Remember-token restoration failed: %s", e)
+
+
+@app.before_request
+def restore_authenticated_user():
+    restore_user_session_from_cookie()
 
 
 @app.after_request
@@ -1021,29 +1125,6 @@ def signup_complete():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login page - redirect to dashboard if already logged in"""
-    # Check for remember_token cookie first - this is the key to persistent login
-    remember_token = request.cookies.get('remember_token')
-    
-    # First try to restore session from remember token
-    if remember_token and 'user_id' not in session:
-        try:
-            conn = sqlite3.connect(DATABASE)
-            cursor = conn.cursor()
-            cursor.execute("SELECT id, username, email FROM users WHERE remember_token = ?", (remember_token,))
-            user = cursor.fetchone()
-            conn.close()
-            if user:
-                # Restore session
-                session['user_id'] = user[0]
-                session['username'] = user[1]
-                session['email'] = user[2]
-                session.permanent = True
-                print(f"Session restored from remember_token for user: {user[1]}")
-                return redirect(url_for('dashboard'))
-        except Exception as e:
-            print(f"Error restoring session from remember_token: {e}")
-    
-    # Also check if user is already in session
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     
@@ -1051,7 +1132,7 @@ def login():
         data = request.get_json(silent=True) or {}
         email = normalize_email(data.get('email'))
         password = data.get('password')
-        remember = data.get('remember', True)
+        remember = parse_bool(data.get('remember'), default=True)
 
         if not email or not password:
             return jsonify({"error": "Missing data"}), 400
@@ -1064,11 +1145,11 @@ def login():
 
             if user and check_password_hash(user[3], password):
                 # Update last login timestamp
-                cursor.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", (user[0],))
-                
-                # Generate remember token for persistent login (always, unless explicitly unchecked)
-                token = secrets.token_urlsafe(32)
-                cursor.execute("UPDATE users SET remember_token = ? WHERE id = ?", (token, user[0]))
+                token = secrets.token_urlsafe(32) if remember else None
+                cursor.execute(
+                    "UPDATE users SET last_login = CURRENT_TIMESTAMP, remember_token = ? WHERE id = ?",
+                    (token, user[0])
+                )
                 
                 conn.commit()
                 conn.close()
@@ -1085,27 +1166,21 @@ def login():
                     "redirect": "/dashboard"
                 })
                 
-                # Set remember cookie (lasts 1 year)
                 if remember:
-                    response_data.set_cookie(
-                        'remember_token',
-                        token,
-                        max_age=60 * 60 * 24 * 365,
-                        httponly=True,
-                        samesite='Lax',
-                        secure=app.config.get('SESSION_COOKIE_SECURE', False)
-                    )
+                    set_remember_cookie(response_data, token)
                 else:
-                    response_data.delete_cookie('remember_token')
+                    clear_remember_cookie(response_data)
                 
-                print(f"User logged in: {email}, remember_token set: {token[:20]}...")
+                print(f"User logged in: {email}, remember_enabled: {bool(token)}")
                 return response_data, 200
             elif user and user[3] == password:
                 # Backward compatibility: migrate legacy plaintext passwords to hashed format.
                 hashed_password = generate_password_hash(password)
-                cursor.execute("UPDATE users SET password = ?, last_login = CURRENT_TIMESTAMP WHERE id = ?", (hashed_password, user[0]))
-                token = secrets.token_urlsafe(32)
-                cursor.execute("UPDATE users SET remember_token = ? WHERE id = ?", (token, user[0]))
+                token = secrets.token_urlsafe(32) if remember else None
+                cursor.execute(
+                    "UPDATE users SET password = ?, last_login = CURRENT_TIMESTAMP, remember_token = ? WHERE id = ?",
+                    (hashed_password, token, user[0])
+                )
                 conn.commit()
                 conn.close()
 
@@ -1120,16 +1195,9 @@ def login():
                 })
 
                 if remember:
-                    response_data.set_cookie(
-                        'remember_token',
-                        token,
-                        max_age=60 * 60 * 24 * 365,
-                        httponly=True,
-                        samesite='Lax',
-                        secure=app.config.get('SESSION_COOKIE_SECURE', False)
-                    )
+                    set_remember_cookie(response_data, token)
                 else:
-                    response_data.delete_cookie('remember_token')
+                    clear_remember_cookie(response_data)
 
                 print(f"User logged in (legacy password migrated): {email}")
                 return response_data, 200
@@ -1168,8 +1236,7 @@ def logout():
 
     session.clear()
     response = make_response(redirect(url_for('home')))
-    response.delete_cookie('remember_token')
-    response.delete_cookie(app.config.get('SESSION_COOKIE_NAME', 'session'))
+    clear_auth_cookies(response)
     return response
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -1318,7 +1385,9 @@ def get_user():
     conn.close()
     
     if user:
-        return jsonify({"id": user["id"], "username": user["username"], "email": user["email"], "phone": user["phone"]})
+        response = jsonify({"id": user["id"], "username": user["username"], "email": user["email"], "phone": user["phone"]})
+        response.headers["Cache-Control"] = "no-store"
+        return response
     return api_error("User not found", status=404)
 
 

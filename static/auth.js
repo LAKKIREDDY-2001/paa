@@ -10,6 +10,7 @@ const getApiBaseUrl = () => {
     }
 };
 const API_BASE_URL = getApiBaseUrl();
+const AUTH_HINT_KEY = 'pricealerter_auth_hint';
 
 // Safe navigation wrapper
 const navigateTo = function(url) {
@@ -42,6 +43,7 @@ let loginSubmitting = false;
 // Global form submission interceptor - prevent any form from submitting normally
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Auth JS loading...');
+    redirectIfAuthenticated();
     
     // Get all forms and buttons
     const signupForm = document.getElementById('signup-form');
@@ -123,6 +125,44 @@ document.addEventListener('DOMContentLoaded', () => {
     initTilt();
     console.log('Auth JS initialized');
 });
+
+function persistAuthHint(payload = {}) {
+    try {
+        localStorage.setItem(AUTH_HINT_KEY, JSON.stringify({
+            email: payload.email || '',
+            remembered: Boolean(payload.remembered),
+            updatedAt: new Date().toISOString()
+        }));
+    } catch (e) {
+        console.log('Could not persist auth hint');
+    }
+}
+
+function clearAuthHint() {
+    try {
+        localStorage.removeItem(AUTH_HINT_KEY);
+    } catch (e) {
+        console.log('Could not clear auth hint');
+    }
+}
+
+async function redirectIfAuthenticated() {
+    const authPage = document.getElementById('login-form') || document.getElementById('signup-form');
+    if (!authPage) return;
+
+    try {
+        const response = await fetch(API_BASE_URL + '/api/user', {
+            method: 'GET',
+            credentials: 'include',
+            cache: 'no-store'
+        });
+        if (response.ok) {
+            navigateTo('/dashboard');
+        }
+    } catch (e) {
+        console.log('No active session to restore on auth page');
+    }
+}
 
 function initTilt() {
     // Completely disable tilt on auth pages to prevent cursor flicker on primary buttons.
@@ -680,6 +720,7 @@ async function handleLogin(e) {
     const email = emailInput?.value;
     const passwordInput = document.getElementById('login-password') || document.getElementById('password');
     const password = passwordInput?.value;
+    const remember = document.getElementById('remember')?.checked !== false;
     const errorMessage = document.getElementById('error-message');
     // Get button by ID directly - more reliable
     const submitBtn = document.getElementById('login-btn');
@@ -713,7 +754,9 @@ async function handleLogin(e) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email, password, remember: true })
+            credentials: 'include',
+            cache: 'no-store',
+            body: JSON.stringify({ email, password, remember })
         });
         
         const contentType = response.headers.get('content-type');
@@ -727,6 +770,7 @@ async function handleLogin(e) {
         }
         
         if (response.ok) {
+            persistAuthHint({ email, remembered: remember });
             // Success - redirect to dashboard
             showToast('success', 'Login successful!');
             
@@ -746,6 +790,7 @@ async function handleLogin(e) {
         }
     } catch (error) {
         console.error('Login error:', error);
+        clearAuthHint();
         showError('An error occurred. Please try again.', errorMessage?.id || 'error-message');
         if (submitBtn) {
             submitBtn.disabled = false;
