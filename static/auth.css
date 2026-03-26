@@ -905,6 +905,104 @@ body {
     }
 }
 
+/* ============================================
+   CRISP 4K AUTH OVERRIDES
+   ============================================ */
+
+:root {
+    --auth-bg: #eef5fb;
+    --auth-glass: #ffffff;
+    --auth-border: rgba(11, 27, 49, 0.08);
+    --auth-shadow: 0 44px 110px rgba(5, 14, 28, 0.18);
+}
+
+body {
+    background:
+        radial-gradient(circle at 10% 14%, rgba(255, 143, 64, 0.18), transparent 26%),
+        radial-gradient(circle at 86% 10%, rgba(0, 194, 255, 0.12), transparent 24%),
+        linear-gradient(180deg, #f8fbff 0%, #edf4fb 100%);
+}
+
+.scene .orb {
+    filter: blur(2px);
+    opacity: 0.9;
+}
+
+.scene .grid {
+    opacity: 0.14;
+}
+
+.auth-container,
+.auth-card,
+.auth-features,
+.auth-stat-card,
+.feature,
+.verification-method,
+.two-fa-section {
+    backdrop-filter: none !important;
+}
+
+.auth-container {
+    background: #ffffff !important;
+    border: 1px solid rgba(11, 27, 49, 0.08) !important;
+    box-shadow: 0 28px 68px rgba(8, 18, 34, 0.1) !important;
+}
+
+.auth-card {
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%) !important;
+}
+
+.auth-features {
+    background:
+        radial-gradient(circle at 12% 12%, rgba(255, 154, 60, 0.14), transparent 22%),
+        radial-gradient(circle at 86% 10%, rgba(53, 92, 255, 0.12), transparent 20%),
+        linear-gradient(180deg, #f8fbff 0%, #eef5fb 100%) !important;
+    color: #0b1b31 !important;
+    border-left: 1px solid rgba(11, 27, 49, 0.08) !important;
+}
+
+.logo .app-brand-logo {
+    background: linear-gradient(135deg, #ff9a3c 0%, #ff6a1a 42%, #ff3d68 100%);
+}
+
+.form-group input,
+.otp-input-group input {
+    background: #ffffff !important;
+    border: 1px solid rgba(11, 27, 49, 0.12) !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.92), 0 10px 22px rgba(8, 18, 34, 0.05) !important;
+}
+
+.form-group input:focus,
+.otp-input-group input:focus {
+    box-shadow: 0 0 0 4px rgba(255, 122, 24, 0.12), 0 18px 32px rgba(8, 18, 34, 0.08) !important;
+}
+
+.auth-btn,
+.verify-btn {
+    background: linear-gradient(135deg, #ff9a3c 0%, #ff6a1a 42%, #ff3d68 100%) !important;
+    box-shadow: 0 18px 34px rgba(245, 84, 20, 0.24) !important;
+}
+
+.auth-stat-card,
+.feature,
+.verification-method,
+.two-fa-section {
+    background: #ffffff !important;
+    border: 1px solid rgba(11, 27, 49, 0.08) !important;
+    box-shadow: 0 16px 34px rgba(8, 18, 34, 0.07) !important;
+}
+
+.auth-stat-card:hover,
+.feature:hover,
+.verification-method:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 40px rgba(8, 18, 34, 0.12) !important;
+}
+
+.feature i {
+    background: linear-gradient(135deg, #ff9a3c 0%, #ff6a1a 42%, #00b7d7 100%) !important;
+}
+
 .verify-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
