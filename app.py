@@ -39,7 +39,6 @@ rate_limit_lock = threading.Lock()
 price_cache_lock = threading.Lock()
 RATE_LIMIT_STATE = {}
 PRODUCT_SNAPSHOT_CACHE = {}
-DEFAULT_SITE_URL = os.environ.get('SITE_URL', 'https://pricealerter.in').rstrip('/')
 
 IS_PRODUCTION = os.environ.get('APP_ENV', '').lower() in ['production', 'prod'] or \
     os.environ.get('FLASK_ENV', '').lower() == 'production'
@@ -221,16 +220,6 @@ def api_error(message, status=400, details=None):
     if details:
         payload["details"] = details
     return jsonify(payload), status
-
-
-def current_site_url():
-    host = request.host_url.rstrip('/') if request else ''
-    return host or DEFAULT_SITE_URL
-
-
-def absolute_url(path="/"):
-    normalized = path if str(path).startswith('/') else f'/{path}'
-    return f"{current_site_url()}{normalized}"
 
 
 def get_request_json():
@@ -986,9 +975,7 @@ def terms():
 @app.route('/blog')
 def blog():
     """Blog listing page"""
-    response = make_response(render_template('blog.html'))
-    response.headers['X-Robots-Tag'] = 'noindex, follow'
-    return response
+    return render_template('blog.html')
 
 @app.route('/blog/how-to-track-product-prices-online')
 def blog_track_prices():
@@ -2337,27 +2324,6 @@ def extract_price_candidates(text):
     return candidates
 
 
-def extract_amazon_structured_price(html_text):
-    if not html_text:
-        return None
-
-    patterns = [
-        r'"priceToPay"\s*:\s*\{.*?"priceAmount"\s*:\s*([0-9][0-9,]*\.?[0-9]*)',
-        r'"corePrice"\s*:\s*\{.*?"priceAmount"\s*:\s*([0-9][0-9,]*\.?[0-9]*)',
-        r'"displayPrice"\s*:\s*"\s*₹\s*([0-9][0-9,]*\.?[0-9]*)',
-        r'"priceAmount"\s*:\s*([0-9][0-9,]*\.?[0-9]*)',
-        r'"price"\s*:\s*"\s*₹\s*([0-9][0-9,]*\.?[0-9]*)'
-    ]
-
-    for pattern in patterns:
-        matches = re.findall(pattern, html_text, flags=re.IGNORECASE | re.DOTALL)
-        for match in matches:
-            price = parse_price(match)
-            if price and 50 <= price <= 10000000:
-                return price
-    return None
-
-
 def extract_json_ld_prices(soup):
     """Extract prices from JSON-LD scripts with nested Offer/Product structures."""
     prices = []
@@ -2600,64 +2566,6 @@ def create_retry_session(site):
 def scrape_price(soup, site, currency_symbol):
     """Generic price scraper - improved to handle more cases"""
 
-    if site == 'amazon':
-        amazon_selectors = [
-            '#corePrice_feature_div .priceToPay .a-offscreen',
-            '#corePrice_feature_div .a-price .a-offscreen',
-            '#corePriceDisplay_desktop_feature_div .priceToPay .a-offscreen',
-            '#corePriceDisplay_desktop_feature_div .a-price .a-offscreen',
-            '#corePrice_desktop .priceToPay .a-offscreen',
-            '#corePrice_desktop .a-price .a-offscreen',
-            '#apex_desktop .priceToPay .a-offscreen',
-            '#apex_desktop .a-price .a-offscreen',
-            '#priceInsideBuyBox_feature_div .a-offscreen',
-            '#newAccordionRow_1 .a-offscreen',
-            '#tp_price_block_total_price_ww .a-offscreen',
-            '#priceblock_dealprice',
-            '#priceblock_saleprice',
-            '#priceblock_ourprice'
-        ]
-
-        for selector in amazon_selectors:
-            price_elem = soup.select_one(selector)
-            if not price_elem:
-                continue
-            price = parse_price(price_elem.get_text(" ", strip=True))
-            if price and 50 <= price <= 10000000:
-                return price
-
-        amazon_input_ids = [
-            'attach-base-product-price',
-            'twister-plus-price-data-price'
-        ]
-        for input_id in amazon_input_ids:
-            input_elem = soup.find("input", {"id": input_id})
-            if not input_elem:
-                continue
-            price = parse_price(input_elem.get("value") or input_elem.get("data-price") or "")
-            if price and 50 <= price <= 10000000:
-                return price
-
-        amazon_price_containers = [
-            soup.find("div", {"id": "corePrice_feature_div"}),
-            soup.find("div", {"id": "corePriceDisplay_desktop_feature_div"}),
-            soup.find("div", {"id": "corePrice_desktop"}),
-            soup.find("div", {"id": "apex_desktop"})
-        ]
-        for container in amazon_price_containers:
-            if not container:
-                continue
-            whole = container.select_one(".a-price-whole")
-            if not whole:
-                continue
-            fraction = container.select_one(".a-price-fraction")
-            whole_text = whole.get_text(strip=True).replace(",", "")
-            if fraction and fraction.get_text(strip=True):
-                whole_text = f"{whole_text}.{fraction.get_text(strip=True)}"
-            price = parse_price(whole_text)
-            if price and 50 <= price <= 10000000:
-                return price
-
     # Universal selectors used by many ecommerce sites globally.
     universal_selectors = [
         'meta[property="product:price:amount"]',
@@ -2709,6 +2617,58 @@ def scrape_price(soup, site, currency_symbol):
         price = parse_price(value)
         if price and 1 <= price <= 10000000:
             return price
+    
+    # Try multiple selectors for Amazon
+    if site == 'amazon':
+        # Common Amazon rendered price element.
+        price_elem = soup.select_one("span.a-price span.a-offscreen")
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+
+        # Try new Amazon price structure
+        price_elem = soup.find("span", {"class": "a-price"})
+        if price_elem:
+            whole = price_elem.find("span", {"class": "a-price-whole"})
+            if whole:
+                fraction = price_elem.find("span", {"class": "a-price-fraction"})
+                whole_text = whole.get_text().replace(',', '').strip()
+                if fraction and fraction.get_text().strip():
+                    whole_text = f"{whole_text}.{fraction.get_text().strip()}"
+                price = parse_price(whole_text)
+                if price:
+                    return price
+        
+        # Try alternative Amazon selectors
+        price_elem = soup.select_one('.a-price-whole')
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        # Try product price ID
+        price_elem = soup.find("span", {"id": "priceblock_ourprice"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        # Try deal price
+        price_elem = soup.find("span", {"class": "a-price-whole"})
+        if price_elem:
+            price = parse_price(price_elem.get_text())
+            if price:
+                return price
+        
+        # Try to find any element with price text
+        price_elem = soup.find(string=re.compile(r'₹\s*[\d,]+'))
+        if price_elem:
+            nums = re.findall(r'₹\s*([\d,]+\.?\d*)', price_elem)
+            for match in nums:
+                price = parse_price(match.replace(',', ''))
+                if price and 50 < price < 100000:
+                    return price
     
     # Flipkart - improved selectors for current website structure
     if site == 'flipkart':
@@ -2907,24 +2867,15 @@ def fetch_product_snapshot(url):
             current_soup = BeautifulSoup(current_response.content, "html.parser")
             current_price = scrape_price(current_soup, site, currency_symbol)
 
-            if site == 'amazon' and (current_price is None or current_price < 1000):
-                structured_price = extract_amazon_structured_price(current_html)
-                if structured_price and (current_price is None or structured_price > current_price * 2):
-                    current_price = structured_price
-
             if current_price is None:
                 json_ld_prices = extract_json_ld_prices(current_soup)
                 if json_ld_prices:
-                    current_price = min(json_ld_prices) if site != 'amazon' else max(json_ld_prices)
+                    current_price = min(json_ld_prices)
 
             if current_price is None:
                 candidates = extract_price_candidates(current_html)
                 if candidates:
-                    if site == 'amazon':
-                        strong_candidates = [candidate for candidate in candidates if candidate >= 1000]
-                        current_price = min(strong_candidates) if strong_candidates else max(candidates)
-                    else:
-                        current_price = min(candidates)
+                    current_price = min(candidates)
 
             if current_price is not None:
                 detected_currency, detected_symbol = detect_currency_from_content(
@@ -3326,23 +3277,23 @@ def service_worker():
 
 @app.route('/favicon.ico')
 def favicon():
-    response = make_response(send_from_directory('static', 'favicon-48.png'))
-    response.headers['Content-Type'] = 'image/png'
+    response = make_response(send_from_directory('static', 'favicon.svg'))
     response.headers['Cache-Control'] = 'public, max-age=86400'
+    response.headers['Content-Type'] = 'image/svg+xml; charset=utf-8'
     return response
 
 
 @app.route('/site.webmanifest')
 def site_webmanifest():
     response = make_response(send_from_directory('static', 'site.webmanifest'))
+    response.headers['Cache-Control'] = 'public, max-age=86400'
     response.headers['Content-Type'] = 'application/manifest+json; charset=utf-8'
-    response.headers['Cache-Control'] = 'public, max-age=3600'
     return response
 
 
 @app.route('/robots.txt')
 def robots_txt():
-    host = current_site_url()
+    host = request.host_url.rstrip('/')
     content = f"""User-agent: Mediapartners-Google
 Allow: /
 
@@ -3355,7 +3306,6 @@ Allow: /
 User-agent: *
 Allow: /
 
-Host: {host}
 Sitemap: {host}/sitemap.xml
 """
     response = make_response(content)
@@ -3370,103 +3320,28 @@ def ads_txt():
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    host = current_site_url()
+    host = request.host_url.rstrip('/')
     entries = [
-        {
-            "path": "/",
-            "lastmod": "2026-03-26",
-            "changefreq": "daily",
-            "priority": "1.0",
-            "images": [
-                absolute_url('/static/og-image.svg'),
-                absolute_url('/static/logos/app-icon.svg')
-            ]
-        },
-        {
-            "path": "/home",
-            "lastmod": "2026-03-26",
-            "changefreq": "weekly",
-            "priority": "0.9",
-            "images": [absolute_url('/static/og-image.svg')]
-        },
-        {
-            "path": "/about",
-            "lastmod": "2026-03-26",
-            "changefreq": "monthly",
-            "priority": "0.6",
-            "images": [absolute_url('/static/logos/app-icon.svg')]
-        },
-        {
-            "path": "/contact",
-            "lastmod": "2026-03-26",
-            "changefreq": "monthly",
-            "priority": "0.6",
-            "images": [absolute_url('/static/logos/app-icon.svg')]
-        },
-        {
-            "path": "/privacy",
-            "lastmod": "2026-03-26",
-            "changefreq": "yearly",
-            "priority": "0.4",
-            "images": [absolute_url('/static/logos/app-icon.svg')]
-        },
-        {
-            "path": "/terms",
-            "lastmod": "2026-03-26",
-            "changefreq": "yearly",
-            "priority": "0.4",
-            "images": [absolute_url('/static/logos/app-icon.svg')]
-        },
-        {
-            "path": "/amp/home",
-            "lastmod": "2026-03-26",
-            "changefreq": "weekly",
-            "priority": "0.7",
-            "images": [absolute_url('/static/og-image.svg')]
-        },
-        {
-            "path": "/blog/how-to-track-product-prices-online",
-            "lastmod": "2026-03-26",
-            "changefreq": "monthly",
-            "priority": "0.7",
-            "images": [absolute_url('/static/og-image.svg')]
-        },
-        {
-            "path": "/blog/best-price-alert-tools-india",
-            "lastmod": "2026-03-26",
-            "changefreq": "monthly",
-            "priority": "0.7",
-            "images": [absolute_url('/static/og-image.svg')]
-        },
-        {
-            "path": "/blog/save-money-price-trackers",
-            "lastmod": "2026-03-26",
-            "changefreq": "monthly",
-            "priority": "0.7",
-            "images": [absolute_url('/static/og-image.svg')]
-        },
-        {
-            "path": "/blog/amazon-price-history",
-            "lastmod": "2026-03-26",
-            "changefreq": "monthly",
-            "priority": "0.7",
-            "images": [absolute_url('/static/og-image.svg')]
-        }
+        ("/", "2026-02-27", "daily", "1.0"),
+        ("/home", "2026-02-27", "weekly", "0.9"),
+        ("/about", "2026-02-27", "monthly", "0.6"),
+        ("/contact", "2026-02-27", "monthly", "0.6"),
+        ("/privacy", "2026-02-27", "yearly", "0.4"),
+        ("/terms", "2026-02-27", "yearly", "0.4"),
+        ("/blog", "2026-02-27", "weekly", "0.8"),
+        ("/amp/home", "2026-02-27", "weekly", "0.7"),
+        ("/blog/how-to-track-product-prices-online", "2026-02-27", "monthly", "0.7"),
+        ("/blog/best-price-alert-tools-india", "2026-02-27", "monthly", "0.7"),
+        ("/blog/save-money-price-trackers", "2026-02-27", "monthly", "0.7"),
+        ("/blog/amazon-price-history", "2026-02-27", "monthly", "0.7")
     ]
-    items = []
-    for entry in entries:
-        image_xml = "".join(
-            f"<image:image><image:loc>{image_url}</image:loc></image:image>"
-            for image_url in entry.get("images", [])
-        )
-        items.append(
-            f"<url><loc>{host}{entry['path']}</loc><lastmod>{entry['lastmod']}</lastmod>"
-            f"<changefreq>{entry['changefreq']}</changefreq><priority>{entry['priority']}</priority>{image_xml}</url>"
-        )
+    items = "\n".join([
+        f"<url><loc>{host}{path}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq><priority>{priority}</priority></url>"
+        for path, lastmod, freq, priority in entries
+    ])
     content = f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-{''.join(items)}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{items}
 </urlset>"""
     response = make_response(content)
     response.headers['Content-Type'] = 'application/xml; charset=utf-8'

@@ -44,18 +44,36 @@
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "Price Alerter AI",
-        "description": "Track live prices of products from Amazon, Flipkart, Myntra, Ajio, Meesho and 100+ shopping sites. Add your shopping links and get instant alerts when prices drop.",
-        "url": "https://pricealerter.in",
-        "applicationCategory": "ShoppingApplication",
-        "operatingSystem": "Web Browser",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "INR",
-            "availability": "https://schema.org/InStock"
-        }
+        "@graph": [
+            {
+                "@type": "Organization",
+                "name": "Price Alerter AI",
+                "url": "https://pricealerter.in",
+                "logo": {
+                    "@type": "ImageObject",
+                    "url": "https://pricealerter.in/static/logos/app-icon.svg"
+                }
+            },
+            {
+                "@type": "WebSite",
+                "name": "Price Alerter AI",
+                "url": "https://pricealerter.in"
+            },
+            {
+                "@type": "WebApplication",
+                "name": "Price Alerter AI",
+                "description": "Track live prices of products from Amazon, Flipkart, Myntra, Ajio, Meesho and 100+ shopping sites. Add your shopping links and get instant alerts when prices drop.",
+                "url": "https://pricealerter.in",
+                "applicationCategory": "ShoppingApplication",
+                "operatingSystem": "Web Browser",
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "INR",
+                    "availability": "https://schema.org/InStock"
+                }
+            }
+        ]
     }
     </script>
     
@@ -64,8 +82,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/svg+xml" href="/static/logos/app-icon.svg">
+    <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="apple-touch-icon" href="/static/logos/app-icon.svg">
+    <link rel="manifest" href="/site.webmanifest">
     
     <!-- Google AdSense -->
     <meta name="google-adsense-account" content="ca-pub-1181608933401999">
