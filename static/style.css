@@ -3263,6 +3263,12 @@ input:checked + .slider:before {
     word-break: break-all;
 }
 
+.api-key-display.safe-note {
+    background: linear-gradient(135deg, #fff6ea, #fff);
+    border: 1px solid rgba(255, 122, 24, 0.14);
+    color: var(--text-main);
+}
+
 .api-docs-link {
     text-align: center;
     margin-top: 16px;

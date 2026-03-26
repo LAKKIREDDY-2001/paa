@@ -2132,34 +2132,22 @@ function showApiKey() {
     modal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3><i class="fa fa-key"></i> API Access</h3>
+                <h3><i class="fa fa-shield"></i> Integrations</h3>
                 <button class="modal-close" onclick="closeModal('api-modal')">&times;</button>
             </div>
             <div class="modal-body">
-                <p>Use this API key for custom integrations:</p>
-                <div class="api-key-display">
-                    <code id="api-key">AI_PRICE_ALERT_API_KEY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}</code>
-                    <button class="btn-secondary" onclick="copyApiKey()">
-                        <i class="fa fa-copy"></i> Copy
-                    </button>
+                <p>Custom integrations are enabled only through secure server-side setup.</p>
+                <div class="api-key-display safe-note">
+                    <strong>Keys and tokens are never exposed in the customer dashboard.</strong>
                 </div>
                 <p class="api-docs-link">
-                    <a href="/contact">View API Documentation</a>
+                    <a href="/contact">Contact us for integration access</a>
                 </p>
             </div>
         </div>
     `;
     document.body.appendChild(modal);
     setTimeout(() => modal.classList.add('active'), 10);
-}
-
-function copyApiKey() {
-    const apiKey = document.getElementById('api-key').textContent;
-    navigator.clipboard.writeText(apiKey).then(() => {
-        showToast('success', 'API key copied to clipboard');
-    }).catch(() => {
-        showToast('error', 'Failed to copy API key');
-    });
 }
 
 function showFeedbackModal() {
