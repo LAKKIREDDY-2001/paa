@@ -986,7 +986,9 @@ def terms():
 @app.route('/blog')
 def blog():
     """Blog listing page"""
-    return render_template('blog.html')
+    response = make_response(render_template('blog.html'))
+    response.headers['X-Robots-Tag'] = 'noindex, follow'
+    return response
 
 @app.route('/blog/how-to-track-product-prices-online')
 def blog_track_prices():
@@ -3378,13 +3380,6 @@ def sitemap_xml():
             "changefreq": "yearly",
             "priority": "0.4",
             "images": [absolute_url('/static/logos/app-icon.svg')]
-        },
-        {
-            "path": "/blog",
-            "lastmod": "2026-03-26",
-            "changefreq": "weekly",
-            "priority": "0.8",
-            "images": [absolute_url('/static/og-image.svg')]
         },
         {
             "path": "/amp/home",
