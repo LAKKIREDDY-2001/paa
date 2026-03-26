@@ -1199,6 +1199,25 @@ h1, h2, h3,
     box-shadow: 0 12px 28px rgba(26, 26, 46, 0.06) !important;
 }
 
+.auth-stat-card strong,
+.auth-stat-card h3,
+.auth-stat-card h4,
+.auth-features strong,
+.auth-features h2,
+.auth-features h3,
+.auth-features h4,
+.feature strong,
+.feature h4 {
+    color: var(--brand-navy) !important;
+}
+
+.auth-features p,
+.auth-features span,
+.feature p,
+.feature span {
+    color: var(--text-muted) !important;
+}
+
 .feature i {
     background: #fff3ee !important;
     color: var(--brand-orange) !important;
