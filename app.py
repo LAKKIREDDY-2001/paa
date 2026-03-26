@@ -3290,8 +3290,8 @@ def service_worker():
 
 @app.route('/favicon.ico')
 def favicon():
-    response = make_response(send_from_directory('static/logos', 'app-icon.svg'))
-    response.headers['Content-Type'] = 'image/svg+xml'
+    response = make_response(send_from_directory('static', 'favicon-48.png'))
+    response.headers['Content-Type'] = 'image/png'
     response.headers['Cache-Control'] = 'public, max-age=86400'
     return response
 
