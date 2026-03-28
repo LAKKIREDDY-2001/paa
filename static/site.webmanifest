@@ -9,16 +9,22 @@
   "theme_color": "#f4600c",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48 96x96 128x128",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "https://pricealerter.in/favicon.ico",
+      "sizes": "48x48 72x72 96x96 128x128 144x144 152x152 192x192 384x384 512x512",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
     },
     {
-      "src": "/static/logos/app-icon.svg",
-      "sizes": "128x128",
+      "src": "https://pricealerter.in/static/logos/app-icon.svg",
+      "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any"
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://pricealerter.in/static/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
