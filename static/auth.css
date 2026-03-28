@@ -435,31 +435,40 @@ h1, h2, h3 {
 }
 
 @media (max-width: 960px) {
+    body { 
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+    
     .auth-container {
-        flex-direction: column;
+        flex-direction: row;
         width: 100vw;
-        max-width: none;
         height: 100vh;
         margin: 0;
         border-radius: 0;
-        backdrop-filter: none;
+        overflow-x: auto;
+        overflow-y: hidden;
     }
 
-    .auth-card,
-    .auth-features {
-        max-width: none;
-        padding: 4rem 2rem;
-        flex: 1;
+    .auth-card {
+        width: 420px;
+        min-width: 420px;
+        max-width: 420px;
+        flex-shrink: 0;
+        padding: 3rem 2rem;
         overflow-y: auto;
+        border-right: 1px solid rgba(255, 255, 255, 0.5);
     }
 
     .auth-features {
-        border-left: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.5);
+        flex: 1;
+        padding: 3rem 2rem;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
-
-    body { 
-        overflow: hidden; 
+    
+    .auth-features h2 {
+        font-size: 1.8rem;
     }
 }
 
