@@ -2410,36 +2410,67 @@ def normalize_product_url(url, site):
     """Normalize known product URLs to reduce anti-bot redirects and noisy params."""
     if not url:
         return url
-    if site != 'amazon':
-        return url
-    asin = extract_amazon_asin(url)
-    if asin:
-        return f"https://www.amazon.in/dp/{asin}"
+    
+    parsed = urlparse(url)
+    
+    if site == 'amazon':
+        asin = extract_amazon_asin(url)
+        if asin:
+            return f"https://www.amazon.in/dp/{asin}"
+        return parsed._replace(query='').geturl()
+    
+    if site == 'flipkart':
+        # Extract clean /p/itmId from ANY position in path, even complex slugs
+        # Handles: /slug/p/itmXXXX, /itmXXXX, /p/itmXXXX?params, etc.
+        itm_match = re.search(r'/p/([a-zA-Z0-9]{10,20})', parsed.path)
+        if not itm_match:
+            # Fallback: try direct itmId patterns
+            itm_match = re.search(r'itm([a-zA-Z0-9]{10,20})', parsed.path)
+        if itm_match:
+            itm_id = itm_match.group(1)
+            return f"https://www.flipkart.com/p/{itm_id}"
+        # Final fallback: strip query params only
+        return parsed._replace(query='').geturl()
+    
+    # Other sites: strip query params
+    if site in ['myntra', 'ajio', 'meesho', 'snapdeal']:
+        return parsed._replace(query='').geturl()
+    
     return url
 
 
 def get_fetch_candidates(url, site):
     """
-    Return candidate URLs to fetch in order.
-    Try canonicalized product URLs first where possible.
+    Return candidate URLs to fetch in order - prioritize canonical product URLs.
+    Flipkart: /p/itmId first → bypasses CAPTCHA best.
     """
     candidates = []
+    
+    # 1. ALWAYS try normalized canonical FIRST
     normalized = normalize_product_url(url, site)
     candidates.append(normalized)
+    
+    # 2. Original URL (if different)
     if normalized != url:
         candidates.append(url)
-
+    
+    # 3. Site-specific additional variants (limited)
     if site == 'amazon':
         asin = extract_amazon_asin(url)
         if asin:
-            candidates.append(f"https://www.amazon.in/gp/aw/d/{asin}")
-            candidates.append(f"https://www.amazon.in/dp/{asin}?th=1&psc=1")
-
-    # Preserve order but remove duplicates.
+            candidates.append(f"https://www.amazon.in/dp/{asin}?th=1")
+            candidates.append(f"https://www.amazon.in/gp/product/{asin}")
+    
+    elif site == 'flipkart':
+        # Mobile variant for Flipkart (sometimes works better)
+        if normalized != url:
+            candidates.append(f"https://www.flipkart.com/p/{normalized.split('/p/')[1] if '/p/' in normalized else ''}")
+    
+    # Deduplicate and limit to max 4 attempts
     deduped = []
     seen = set()
     for candidate in candidates:
-        if candidate and candidate not in seen:
+        if candidate and candidate not in seen and len(deduped) < 4:
             deduped.append(candidate)
             seen.add(candidate)
     return deduped
@@ -2576,13 +2607,15 @@ def scrape_price(soup, site, currency_symbol):
             ".a-price-symbol + .a-price-whole",
             ".dealprice + .a-price-whole"
         ],
-        'flipkart': [
-            "._30jeq3",
-            ".Nx9bqj",
-            "._25b18c ._30jeq3",
-            "[data-testid='final-price']",
-            ".B_NuCI[data-testid*='price']"
-        ],
+    'flipkart': [
+        "._30jeq3",
+        "._30jeq3._2oYGC8",  # Discounted price
+        ".Nx9bqj",
+        "._25b18c ._30jeq3",
+        "[data-testid='final-price']",
+        ".B_NuCI[data-testid*='price']",
+        "div[data-id*='price']"
+    ],
         'myntra': [
             "span.pdp-price",
             ".pdp-priceSmall",
