@@ -601,21 +601,33 @@ async function handleFlow() {
             });
 
             if (response.ok) {
-                const scrapedPrice = parseFloat(data.price);
-                if (!isNaN(scrapedPrice) && scrapedPrice > 0 && scrapedPrice < 1000000) {
+                const scrapedPrice = parseFloat(data.price || 0);
+                const scrapedName = (data.productName || 'Product').trim() || 'Product';
+                const scrapedCurrency = data.currency || 'INR';
+                const scrapedSymbol = data.currency_symbol || '₹';
+                const scrapedImage = data.productImage || '';
+                
+                // Validate scraped data - if no real price/name, show error
+                if (scrapedPrice <= 0 || scrapedName === 'Product' || scrapedName === 'Other') {
+                    throw new Error('Could not extract product details. Use a direct product page with visible price/title: ' + scrapedName + ' ' + scrapedSymbol + scrapedPrice);
+                }
+                
+                if (!isNaN(scrapedPrice) && scrapedPrice > 1 && scrapedPrice < 500000) {
                     priceStep.style.display = 'block';
-                    priceStep.innerHTML = '<p><strong>Current: ' + (data.currency_symbol || '₹') + scrapedPrice.toLocaleString('en-IN') + '</strong></p>' +
-                        '<small>Store: ' + (data.site || 'detected') + '</small><br>' +
-                        '<input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Target price" value="' + (scrapedPrice * 0.95).toLocaleString('en-IN') + '">';
+                    priceStep.innerHTML = `
+                        <p><strong>Current: ${scrapedSymbol}${scrapedPrice.toLocaleString('en-IN')}</strong></p>
+                        <p>📦 <strong>${scrapedName}</strong> from ${data.site || 'store'}</p>
+                        <input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Target price" value="${(scrapedPrice * 0.92).toLocaleString('en-IN')}">
+                    `;
                     mainBtn.disabled = false;
-                    mainBtn.innerHTML = 'Create Alert';
-                    mainBtn.onclick = () => createTracker(url, scrapedPrice, data.productName || 'Product', data.currency || 'INR', data.currency_symbol || '₹', data.productImage || '');
+                    mainBtn.innerHTML = '🎯 Create Alert';
+                    mainBtn.onclick = () => createTracker(url, scrapedPrice, scrapedName, scrapedCurrency, scrapedSymbol, scrapedImage);
                     
-                    priceStep.dataset.productName = data.productName || 'Product';
+                    priceStep.dataset.productName = scrapedName;
                     priceStep.dataset.currentPrice = scrapedPrice;
-                    priceStep.dataset.currency = data.currency || 'INR';
-                    priceStep.dataset.currencySymbol = data.currency_symbol || '₹';
-                    priceStep.dataset.productImage = data.productImage || '';
+                    priceStep.dataset.currency = scrapedCurrency;
+                    priceStep.dataset.currencySymbol = scrapedSymbol;
+                    priceStep.dataset.productImage = scrapedImage;
                 } else {
                     throw new Error('Invalid price scraped: ' + data.price);
                 }
@@ -691,9 +703,9 @@ async function createTracker(url) {
         const newTracker = data.tracker || data || {
             id: data.id || Date.now(),
             url: url,
-            productName: productName,
+            productName: productName || 'Product',
             productImage: productImage || '',
-            currentPrice: currentPrice,
+            currentPrice: Math.max(currentPrice, 0.01), // Prevent 0 prices
             targetPrice: targetPrice,
             currency: currency,
             currencySymbol: currencySymbol,
@@ -701,21 +713,26 @@ async function createTracker(url) {
             lastCheckedAt: data.lastCheckedAt || new Date().toISOString()
         };
         
-        // Update or add to trackers list
-        const existingIndex = trackers.findIndex(t => t.id == newTracker.id);
-        if (existingIndex >= 0) {
-            trackers[existingIndex] = { ...trackers[existingIndex], ...newTracker };
-            logActivity('✅ Alert Updated', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
+        // Validate tracker - don't show celebration for broken data
+        if (newTracker.currentPrice <= 0 || newTracker.productName === 'Product') {
+            showToast('error', '⚠️ Tracker created but scraper missed details. Refresh price later for full data.');
         } else {
-            trackers.unshift(newTracker);
-            logActivity('🎯 Alert Created', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
+            // Update or add to trackers list
+            const existingIndex = trackers.findIndex(t => t.id == newTracker.id);
+            if (existingIndex >= 0) {
+                trackers[existingIndex] = { ...trackers[existingIndex], ...newTracker };
+                logActivity('✅ Alert Updated', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
+            } else {
+                trackers.unshift(newTracker);
+                logActivity('🎯 Alert Created', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
+            }
+             
+             // Always celebrate success (new or existing)
+             showToast('success', `Alert ${existingIndex >= 0 ? 'updated' : 'created'} successfully!`);
+             setTimeout(() => {
+                 showCelebration(newTracker, { mode: 'created' });
+             }, 100);
         }
-         
-         // Always celebrate success (new or existing)
-         showToast('success', `Alert ${existingIndex >= 0 ? 'updated' : 'created'} successfully!`);
-         setTimeout(() => {
-             showCelebration(newTracker, { mode: 'created' });
-         }, 100);
          
          urlInput.value = '';
          priceStep.style.display = 'none';
