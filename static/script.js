@@ -688,42 +688,43 @@ async function createTracker(url) {
             })
         });
         
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to create tracker');
-        }
-        
         const newTracker = data.tracker || data || {
-            id: Date.now(),
+            id: data.id || Date.now(),
             url: url,
             productName: productName,
-            productImage: productImage,
+            productImage: productImage || '',
             currentPrice: currentPrice,
             targetPrice: targetPrice,
             currency: currency,
             currencySymbol: currencySymbol,
-            createdAt: new Date().toISOString(),
-            lastCheckedAt: new Date().toISOString()
+            createdAt: data.createdAt || new Date().toISOString(),
+            lastCheckedAt: data.lastCheckedAt || new Date().toISOString()
         };
         
-        trackers.unshift(newTracker);
-        logActivity('🎯 Alert Created', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
-        
-        // Immediate celebration
-        showToast('success', 'Tracker created successfully!');
-        setTimeout(() => {
-            showCelebration(newTracker, { mode: 'created' });
-        }, 100);
-        
-        urlInput.value = '';
-        priceStep.style.display = 'none';
-        mainBtn.innerHTML = 'Start AI Tracking';
-        mainBtn.onclick = () => handleFlow();
-        
-        renderTrackers();
-        updateStats();
-        switchView('my-trackers');
-        
-    } catch (error) {
+        // Update or add to trackers list
+        const existingIndex = trackers.findIndex(t => t.id == newTracker.id);
+        if (existingIndex >= 0) {
+            trackers[existingIndex] = { ...trackers[existingIndex], ...newTracker };
+            logActivity('✅ Alert Updated', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
+        } else {
+            trackers.unshift(newTracker);
+            logActivity('🎯 Alert Created', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
+        }
+         
+         // Always celebrate success (new or existing)
+         showToast('success', `Alert ${existingIndex >= 0 ? 'updated' : 'created'} successfully!`);
+         setTimeout(() => {
+             showCelebration(newTracker, { mode: 'created' });
+         }, 100);
+         
+         urlInput.value = '';
+         priceStep.style.display = 'none';
+         mainBtn.innerHTML = 'Start AI Tracking';
+         mainBtn.onclick = () => handleFlow();
+         
+         renderTrackers();
+         updateStats();
+         switchView('my-trackers');
         showToast('error', error.message || 'Failed to create tracker');
         mainBtn.innerHTML = 'Create Alert';
         mainBtn.onclick = () => createTracker(url);
