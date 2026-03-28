@@ -2432,8 +2432,12 @@ def normalize_product_url(url, site):
         # Final fallback: strip query params only
         return parsed._replace(query='').geturl()
     
+    # Myntra: strip /buy and query params
+    if site == 'myntra':
+        path = parsed.path.rstrip('/buy')
+        return urlparse(parsed._replace(path=path, query='')).geturl()
     # Other sites: strip query params
-    if site in ['myntra', 'ajio', 'meesho', 'snapdeal']:
+    if site in ['ajio', 'meesho', 'snapdeal']:
         return parsed._replace(query='').geturl()
     
     return url
@@ -2616,10 +2620,12 @@ def scrape_price(soup, site, currency_symbol):
         ".B_NuCI[data-testid*='price']",
         "div[data-id*='price']"
     ],
-        'myntra': [
+'myntra': [
             "span.pdp-price",
             ".pdp-priceSmall",
-            "[data-testid='pdp-price']",
+            "._3OO5Xc",
+            "[data-testid*='pdp-price']",
+            "[data-testid*='product-price']",
             ".priceRange__currentPrice"
         ],
         'ajio': [
