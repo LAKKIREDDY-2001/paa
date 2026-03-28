@@ -561,10 +561,6 @@ function switchView(viewName) {
 // ==================== PRICE TRACKING ====================
 
 async function handleFlow() {
-    if (isTrackerActionInProgress) {
-        return;
-    }
-
     const urlInput = document.getElementById('urlInput');
     const priceStep = document.getElementById('priceStep');
     const mainBtn = document.getElementById('mainBtn');
@@ -605,19 +601,23 @@ async function handleFlow() {
             });
 
             if (response.ok) {
-                priceStep.style.display = 'block';
-                priceStep.innerHTML = '<p><strong>Current Price: ' + (data.currency_symbol || '$') + data.price + '</strong></p>' +
-                    '<input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Set target price" value="' + (data.price * 0.95).toFixed(2) + '">';
-                mainBtn.disabled = false;
-                mainBtn.innerHTML = 'Create Tracker';
-                
-                priceStep.dataset.productName = data.productName || 'Product';
-                priceStep.dataset.currentPrice = data.price;
-                priceStep.dataset.currency = data.currency;
-                priceStep.dataset.currencySymbol = data.currency_symbol;
-                priceStep.dataset.productImage = data.productImage || '';
-                if (data.knownStore === false || data.site === 'generic') {
-                    showToast('success', 'Global mode enabled for this site. For best results, use a direct product page with a visible price.');
+                const scrapedPrice = parseFloat(data.price);
+                if (!isNaN(scrapedPrice) && scrapedPrice > 0 && scrapedPrice < 1000000) {
+                    priceStep.style.display = 'block';
+                    priceStep.innerHTML = '<p><strong>Current: ' + (data.currency_symbol || '₹') + scrapedPrice.toLocaleString('en-IN') + '</strong></p>' +
+                        '<small>Store: ' + (data.site || 'detected') + '</small><br>' +
+                        '<input type="number" id="targetPrice" class="product-input" style="width: 150px;" placeholder="Target price" value="' + (scrapedPrice * 0.95).toLocaleString('en-IN') + '">';
+                    mainBtn.disabled = false;
+                    mainBtn.innerHTML = 'Create Alert';
+                    mainBtn.onclick = () => createTracker(url, scrapedPrice, data.productName || 'Product', data.currency || 'INR', data.currency_symbol || '₹', data.productImage || '');
+                    
+                    priceStep.dataset.productName = data.productName || 'Product';
+                    priceStep.dataset.currentPrice = scrapedPrice;
+                    priceStep.dataset.currency = data.currency || 'INR';
+                    priceStep.dataset.currencySymbol = data.currency_symbol || '₹';
+                    priceStep.dataset.productImage = data.productImage || '';
+                } else {
+                    throw new Error('Invalid price scraped: ' + data.price);
                 }
             } else {
                 mainBtn.disabled = false;
@@ -628,27 +628,15 @@ async function handleFlow() {
             mainBtn.disabled = false;
             mainBtn.innerHTML = 'Start AI Tracking';
             if (error.name === 'AbortError') {
-                showToast('error', 'Request timed out. Please try again.');
+                showToast('error', 'Request timeout - try shorter URL');
             } else {
-                showToast('error', 'Failed to connect to server');
+                showToast('error', 'Price fetch failed - use direct product page');
             }
         } finally {
             isTrackerActionInProgress = false;
         }
     } else {
-        const targetPrice = document.getElementById('targetPrice').value;
-        if (!targetPrice) {
-            showToast('error', 'Please set a target price');
-            return;
-        }
-        
-        const currentPrice = parseFloat(priceStep.dataset.currentPrice || 0);
-        const productName = priceStep.dataset.productName || 'Product';
-        const currency = priceStep.dataset.currency || 'USD';
-        const currencySymbol = priceStep.dataset.currencySymbol || '$';
-        const productImage = priceStep.dataset.productImage || '';
-        
-        await createTracker(url, targetPrice, currentPrice, productName, currency, currencySymbol, productImage);
+        createTracker(url);
     }
 }
 
@@ -665,16 +653,23 @@ function setLoadingState(loading, message) {
     }
 }
 
-async function createTracker(url, targetPrice, currentPrice, productName, currency, currencySymbol, productImage) {
+async function createTracker(url) {
+    const priceStep = document.getElementById('priceStep');
     const urlInput = document.getElementById('urlInput');
     const mainBtn = document.getElementById('mainBtn');
-    const priceStep = document.getElementById('priceStep');
     
-    if (isTrackerActionInProgress) {
+    const targetPrice = parseFloat(document.getElementById('targetPrice').value || 0);
+    const currentPrice = parseFloat(priceStep.dataset.currentPrice || 0);
+    const productName = priceStep.dataset.productName || 'Product';
+    const currency = priceStep.dataset.currency || 'INR';
+    const currencySymbol = priceStep.dataset.currencySymbol || '₹';
+    const productImage = priceStep.dataset.productImage || '';
+    
+    if (!targetPrice || targetPrice <= 0 || isNaN(targetPrice)) {
+        showToast('error', 'Please set a valid target price');
         return;
     }
-    isTrackerActionInProgress = true;
-
+    
     setLoadingState(true, 'Creating tracker...');
     
     try {
@@ -684,14 +679,12 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
             body: JSON.stringify({
                 url: url,
                 currentPrice: currentPrice,
-                targetPrice: parseFloat(targetPrice),
+                targetPrice: targetPrice,
                 currency: currency,
                 currencySymbol: currencySymbol,
                 productName: productName,
                 productImage: productImage,
-                alertRules: [
-                    { type: 'target_price', value: parseFloat(targetPrice) }
-                ]
+                alertRules: [{ type: 'target_price', value: targetPrice }]
             })
         });
         
@@ -699,45 +692,44 @@ async function createTracker(url, targetPrice, currentPrice, productName, curren
             throw new Error(data.error || 'Failed to create tracker');
         }
         
-        const newTracker = data.tracker || {
-            id: data.id,
+        const newTracker = data.tracker || data || {
+            id: Date.now(),
             url: url,
             productName: productName,
             productImage: productImage,
             currentPrice: currentPrice,
-            targetPrice: parseFloat(targetPrice),
+            targetPrice: targetPrice,
             currency: currency,
             currencySymbol: currencySymbol,
             createdAt: new Date().toISOString(),
-            alertRules: [{ type: 'target_price', value: parseFloat(targetPrice) }]
+            lastCheckedAt: new Date().toISOString()
         };
         
-        trackers.push(newTracker);
-        logActivity('Tracker created', productName + ' target set at ' + currencySymbol + targetPrice);
+        trackers.unshift(newTracker);
+        logActivity('🎯 Alert Created', `${productName} • Target ${currencySymbol}${targetPrice.toLocaleString('en-IN')}`);
         
+        // Immediate celebration
         showToast('success', 'Tracker created successfully!');
         setTimeout(() => {
             showCelebration(newTracker, { mode: 'created' });
-        }, 180);
-        triggerBrowserNotification(newTracker, {
-            title: 'Tracker created',
-            body: (productName || 'Tracked product') + ' is now being monitored at target ' + formatCurrency(currencySymbol, parseFloat(targetPrice))
-        });
+        }, 100);
         
         urlInput.value = '';
         priceStep.style.display = 'none';
-        mainBtn.disabled = false;
         mainBtn.innerHTML = 'Start AI Tracking';
+        mainBtn.onclick = () => handleFlow();
         
         renderTrackers();
         updateStats();
         switchView('my-trackers');
+        
     } catch (error) {
-        showToast('error', error.message);
-        mainBtn.disabled = false;
-        mainBtn.innerHTML = 'Create Tracker';
+        showToast('error', error.message || 'Failed to create tracker');
+        mainBtn.innerHTML = 'Create Alert';
+        mainBtn.onclick = () => createTracker(url);
     } finally {
         isTrackerActionInProgress = false;
+        setLoadingState(false);
     }
 }
 
