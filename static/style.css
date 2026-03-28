@@ -217,7 +217,27 @@ img {
     align-items: center;
     gap: 16px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    position: relative;
 }
+
+.hamburger-menu {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-main);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .hamburger-menu {
+        display: block;
+    }
+}
+
 
 .window-dots { display: flex; gap: 8px; }
 
@@ -1040,7 +1060,7 @@ img {
 }
 
 .app-sidebar {
-    width: 260px;
+    width: clamp(240px, 22vw, 280px);
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border-color);
     padding: 24px 16px;
@@ -1442,7 +1462,7 @@ button span {
 
 .trackers-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 95vw), 1fr));
     gap: 24px;
     align-items: start;
 }
@@ -2764,24 +2784,45 @@ button span {
 }
 
 @media (max-width: 768px) {
-    .browser-window {
-        height: 100vh;
-        border-radius: 0;
-    }
+    .browser-window { height: 100vh; border-radius: 0; }
     .viewport { flex-direction: column; }
     .app-sidebar {
-        width: 100%;
-        flex-direction: row;
-        padding: 12px;
-        overflow-x: auto;
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        z-index: 200;
+        background: var(--bg-sidebar);
+        flex-direction: column;
+        padding: 2rem;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
     }
-    .app-sidebar h3 { display: none; }
-    .nav-item { padding: 10px 14px; font-size: 0.9rem; }
-    .sidebar-stats { display: none; }
-    .app-main { padding: 16px; }
+    .app-sidebar.open { transform: translateX(0); }
+    .app-sidebar h3 { display: block; margin-bottom: 2rem; padding-left: 1rem; }
+    .nav-item { 
+        padding: 1rem 1.5rem;
+        margin-bottom: 0.5rem;
+        border-radius: 1rem;
+    }
+    .sidebar-stats { 
+        margin-top: auto; 
+        padding: 1.5rem;
+        gap: 1rem;
+    }
+    .sidebar-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 199;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease;
+    }
+    .sidebar-overlay.open { opacity: 1; visibility: visible; }
+    .app-main { padding: 1.5rem; }
     .input-container h1 { font-size: 2rem; }
     .trackers-grid { grid-template-columns: 1fr; }
-    .modal { padding: 24px; }
+    .modal { padding: 1.5rem; }
     .celebration-text { font-size: 2.5rem; }
 }
 

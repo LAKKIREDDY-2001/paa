@@ -437,20 +437,29 @@ h1, h2, h3 {
 @media (max-width: 960px) {
     .auth-container {
         flex-direction: column;
-        width: min(100%, calc(100% - 24px));
-        margin: 24px auto;
-        border-radius: 28px;
+        width: 100vw;
+        max-width: none;
+        height: 100vh;
+        margin: 0;
+        border-radius: 0;
+        backdrop-filter: none;
     }
 
     .auth-card,
     .auth-features {
         max-width: none;
-        padding: 28px 22px;
+        padding: 4rem 2rem;
+        flex: 1;
+        overflow-y: auto;
     }
 
     .auth-features {
         border-left: none;
         border-top: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    body { 
+        overflow: hidden; 
     }
 }
 

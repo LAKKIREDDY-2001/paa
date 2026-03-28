@@ -2564,59 +2564,86 @@ def create_retry_session(site):
     return session_client
 
 def scrape_price(soup, site, currency_symbol):
-    """Generic price scraper - improved to handle more cases"""
-
-    # Universal selectors used by many ecommerce sites globally.
+    """Enhanced price scraper with site-specific selectors"""
+    
+    # Site-specific selectors (highest priority)
+    site_selectors = {
+        'amazon': [
+            "span.a-price span.a-offscreen",
+            "span.a-price-whole",
+            "span[data-testid='priceblock_ourprice']",
+            "#priceblock_ourprice",
+            ".a-price-symbol + .a-price-whole",
+            ".dealprice + .a-price-whole"
+        ],
+        'flipkart': [
+            "._30jeq3",
+            ".Nx9bqj",
+            "._25b18c ._30jeq3",
+            "[data-testid='final-price']",
+            ".B_NuCI[data-testid*='price']"
+        ],
+        'myntra': [
+            "span.pdp-price",
+            ".pdp-priceSmall",
+            "[data-testid='pdp-price']",
+            ".priceRange__currentPrice"
+        ],
+        'ajio': [
+            "span.prod-price",
+            ".prod-price",
+            "[data-testid='product-price']"
+        ],
+        'meesho': [
+            "h3.Sc-product-price",
+            "[data-testid='product-price']",
+            ".product-price"
+        ],
+        'snapdeal': [
+            "span.product-price",
+            ".product-price",
+            "[data-testid='product-price']"
+        ],
+        'reliance': [
+            "._1U1JPL",
+            "[data-testid='price']",
+            ".price-block .current-price"
+        ],
+        'generic': []
+    };
+    
+    # Site-specific selectors first
+    if site in site_selectors:
+        for selector in site_selectors[site]:
+            elem = soup.select_one(selector)
+            if elem:
+                value = elem.get_text(strip=True) or elem.get('content')
+                price = parse_price(value)
+                if price and 1 <= price <= 1000000:
+                    return price
+    
+    # Universal selectors (fallback)
     universal_selectors = [
         'meta[property="product:price:amount"]',
-        'meta[name="product:price:amount"]',
         'meta[itemprop="price"]',
         '[itemprop="price"]',
-        '[data-testid="price"]',
-        '[data-test-id="price"]',
-        '[data-qa="price"]',
         '[data-price]',
-        '[data-sale-price]',
-        '[data-product-price]',
-        '[data-final-price]',
         '[data-current-price]',
-        '[data-price-amount]',
-        '[data-price-value]',
-        '[data-product-price-amount]',
         '[class*="price"]',
-        '[id*="price"]',
-        '[class*="Price"]',
-        '[id*="Price"]',
         '.price',
         '.product-price',
-        '.sale-price',
-        '.current-price',
-        '.priceFinal',
-        '.offer-price',
-        '.special-price',
-        '.our-price',
-        '.regular-price',
-        '.price__current',
-        '.price__sale',
-        '.money',
-        '.amount'
+        '.sale-price'
     ]
+    
     for selector in universal_selectors:
         elem = soup.select_one(selector)
-        if not elem:
-            continue
-        value = (
-            elem.get('content') if elem.name == 'meta'
-            else elem.get('data-price')
-            or elem.get('data-sale-price')
-            or elem.get('data-price-amount')
-            or elem.get('data-price-value')
-            or elem.get('data-product-price-amount')
-            or elem.get_text()
-        )
-        price = parse_price(value)
-        if price and 1 <= price <= 10000000:
-            return price
+        if elem:
+            value = elem.get('content') or elem.get('data-price') or elem.get('data-sale-price') or elem.get_text(strip=True)
+            price = parse_price(value)
+            if price and 1 <= price <= 1000000:
+                return price
+    
+    return None
     
     # Try multiple selectors for Amazon
     if site == 'amazon':

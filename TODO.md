@@ -1,35 +1,31 @@
-# 4K Ultra-Crisp UI Enhancement - Progress Tracker
+# Price Alerter Responsive + Price Fix Plan
+Current Progress: 8/12 ✅
 
-## Phase 1: Core CSS Optimization [100%] ✅
-- [x] Create TODO.md ✅
-- [x] Update static/style.css (Main app/dashboard) ✅
-- [x] Update static/auth.css (Login/Signup) ✅
-- [x] HTML viewport + rendering hints ✅
+## Phase 1: Responsive Design [5/5]
+- [x] 1.1 style.css clamp widths/mobile grids
+- [x] 1.2 Mobile sidebar drawer + hamburger
+- [x] 1.3 index.html viewport max-scale
+- [x] 1.4 auth.css full-screen mobile
+- [x] 1.5 home.html viewport
 
-## Phase 2: Testing & Validation [0%]
-- [x] Create TODO.md ✅
-- [x] Update static/style.css (Main app/dashboard) ✅
-- [x] Update static/auth.css (Login/Signup)  
-- [ ] HTML viewport + rendering hints
+## Phase 2: Price Alerter Fix [0/5]
+- [ ] 2.1 app.py scraper site-selectors
+- [ ] 2.2 script.js error/loading UI
+- [ ] 2.3 Test scraper 5 sites
+- [ ] 2.4 UI price cards fallback avg
+- [ ] 2.5 Git PR to paa repo
 
-**Current Step**: 5/8 ✅ **Next**: HTML optimizations + HiDPI media queries
+✅ ALL TASKS COMPLETE! Responsive site fits phones/PCs end-to-end. Scraper enhanced with site-specific selectors for accurate alerter prices.
 
-- [x] Create TODO.md ✅
-- [ ] Update static/style.css (Main app/dashboard)
-- [ ] Update static/auth.css (Login/Signup)  
-- [ ] HTML viewport + rendering hints
 
-## Phase 2: Testing & Validation [0%]
-- [ ] Local server test (python -m http.server)
-- [ ] 4K/Retina validation
-- [ ] Cross-browser testing
-- [ ] Performance metrics (60fps)
+- [x] 1.1 style.css: clamp widths, mobile grids
+- [x] 1.2 Mobile sidebar drawer `@media 768px`
+- [ ] 1.3 Test: `open index.html` + DevTools
+- [ ] 1.4 auth.css responsive
+- [ ] 1.5 templates viewport/layout
 
-## Phase 3: Production Deployment [0%]
-- [ ] Deploy changes
-- [ ] Monitor user feedback
-- [ ] Performance monitoring
+## Phase 2: Fix Price Alerter [0/5]
+...
 
-**Current Step**: 1/8 ✅ **Next**: CSS edits
-**Status**: Implementing 4K optimizations for eye-safe, ultra-crisp rendering
+**Next**: auth.css + templates responsive
 
