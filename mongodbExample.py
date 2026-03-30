@@ -1,6 +1,6 @@
 """
 Install and run:
-python3 -m pip install "pymongo[srv]"
+python3 -m pip install pymongo
 export MONGODB_URI="your-mongodb-atlas-connection-string"
 python3 mongodbExample.py
 """
@@ -19,32 +19,69 @@ from pymongo.errors import PyMongoError
 from pymongo.server_api import ServerApi
 
 CONFIG_FILE = Path(__file__).with_name("mongodb.config.json")
-DATABASE_NAME = "notification_demo"
-COLLECTION_NAME = "notifications"
+DEFAULT_DATABASE_NAME = "notification_demo"
+DEFAULT_COLLECTION_NAME = "notifications"
 
 
-def load_mongodb_uri() -> str:
+def is_placeholder_uri(uri: str) -> bool:
+    return "USERNAME" in uri or "NEW_PASSWORD" in uri
+
+
+def load_config() -> dict[str, Any]:
+    if not CONFIG_FILE.exists():
+        return {}
+
+    parsed_config = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+    if not isinstance(parsed_config, dict):
+        raise RuntimeError(f"{CONFIG_FILE.name} must contain a JSON object.")
+    return parsed_config
+
+
+def load_mongodb_uri(config: dict[str, Any]) -> str:
     mongodb_uri = os.getenv("MONGODB_URI")
     if mongodb_uri:
+        if is_placeholder_uri(mongodb_uri):
+            raise RuntimeError(
+                "MONGODB_URI still contains placeholder values. Replace USERNAME and NEW_PASSWORD with your Atlas credentials."
+            )
         return mongodb_uri
 
-    # A tiny local config file is a convenient fallback for quick experiments.
-    # Expected shape: { "MONGODB_URI": "mongodb+srv://..." }
-    if CONFIG_FILE.exists():
-        parsed_config = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
-        config_uri = parsed_config.get("MONGODB_URI")
-        if isinstance(config_uri, str) and config_uri:
+    # The local config file supports either:
+    # { "MONGODB_URI": "mongodb+srv://..." }
+    # or
+    # { "uri": "mongodb+srv://..." }
+    for key in ("MONGODB_URI", "uri"):
+        config_uri = config.get(key)
+        if isinstance(config_uri, str) and config_uri.strip():
+            if is_placeholder_uri(config_uri):
+                raise RuntimeError(
+                    f"{CONFIG_FILE.name} still contains placeholder values. Replace USERNAME and NEW_PASSWORD with your Atlas credentials."
+                )
             return config_uri
 
     raise RuntimeError(
-        f"Missing MONGODB_URI. Set it in your environment or add it to {CONFIG_FILE.name}."
+        f"Missing MONGODB_URI. Set it in your environment or add MONGODB_URI or uri to {CONFIG_FILE.name}."
     )
+
+
+def load_database_name(config: dict[str, Any]) -> str:
+    config_database = config.get("database")
+    if isinstance(config_database, str) and config_database.strip():
+        return config_database
+    return DEFAULT_DATABASE_NAME
+
+
+def load_collection_name(config: dict[str, Any]) -> str:
+    config_collection = config.get("collection")
+    if isinstance(config_collection, str) and config_collection.strip():
+        return config_collection
+    return DEFAULT_COLLECTION_NAME
 
 
 def build_seed_documents() -> list[dict[str, Any]]:
     now = datetime.now(timezone.utc)
 
-    # The timestamps are intentionally different so sorting by recency is easy to see.
+    # Different timestamps make the "most recent" query easy to verify.
     return [
         {
             "user_id": "user_001",
@@ -130,20 +167,23 @@ def build_seed_documents() -> list[dict[str, Any]]:
 
 
 def main() -> None:
-    mongodb_uri = load_mongodb_uri()
+    config = load_config()
+    mongodb_uri = load_mongodb_uri(config)
+    database_name = load_database_name(config)
+    collection_name = load_collection_name(config)
     client: MongoClient[dict[str, Any]] | None = None
 
     try:
         print("1. Connecting to MongoDB Atlas...")
         client = MongoClient(mongodb_uri, server_api=ServerApi("1"))
 
-        # A ping confirms both connectivity and credentials before we do any writes.
+        # A ping confirms the cluster is reachable before we write any data.
         client.admin.command("ping")
         print("   Connected successfully.")
 
-        database = client[DATABASE_NAME]
-        collection: Collection[dict[str, Any]] = database[COLLECTION_NAME]
-        print(f'2. Using database "{DATABASE_NAME}" and collection "{COLLECTION_NAME}".')
+        database = client[database_name]
+        collection: Collection[dict[str, Any]] = database[collection_name]
+        print(f'2. Using database "{database_name}" and collection "{collection_name}".')
 
         documents = build_seed_documents()
         print(f"3. Inserting {len(documents)} realistic notification documents...")
