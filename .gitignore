@@ -54,6 +54,7 @@ Desktop.ini
 .env.local
 .env.*.local
 *.local
+mongodb.config.json
 
 # ===================
 # Database
